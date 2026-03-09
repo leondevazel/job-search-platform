@@ -7,16 +7,16 @@ AI-powered job search and application management platform that helps job seekers
 ## Screenshots
 
 ### AI Company Recommendations
-![Discover Jobs](screenshots/discover-jobs.png)
+![Discover Jobs](./screenshots/discover-jobs.png)
 
 ### Profile Setup
-![Profile Setup](screenshots/profile-setup.png)
+![Profile Setup](./screenshots/profile-setup.png)
 
 ### Application Tracking
-![My Applications](screenshots/my-applications.png)
+![My Applications](./screenshots/my-applications.png)
 
 ### Analytics Dashboard
-![Analytics](screenshots/analytics.png)
+![Analytics](./screenshots/analytics.png)
 
 ## Features
 
