@@ -14,45 +14,201 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
     <style>
-    .main {
-        padding: 0rem 1rem;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --accent: #4C7CFF;
+        --accent-dim: rgba(76, 124, 255, 0.14);
+        --surface: #131722;
+        --surface-hover: #171c29;
+        --border: rgba(255, 255, 255, 0.08);
+        --text-muted: #8992A6;
+        --success: #34D399;
+        --warning: #F5B942;
+        --danger: #F1685E;
     }
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .main { padding: 1.5rem 2rem 3rem; }
+
+    /* ---- Headings ---- */
+    h1 { font-weight: 800 !important; letter-spacing: -0.02em; margin-bottom: 0.1rem !important; }
+    h2, h3 { font-weight: 700 !important; letter-spacing: -0.01em; }
+    .stMarkdown p { color: var(--text-muted); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.4rem 0; }
+
+    /* ---- Sidebar ---- */
+    [data-testid="stSidebar"] {
+        background: #0D1017;
+        border-right: 1px solid var(--border);
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0.25rem 0 1rem;
+    }
+    .brand-badge {
+        width: 34px; height: 34px;
+        border-radius: 9px;
+        background: linear-gradient(135deg, var(--accent), #7C6CF6);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; color: white; font-size: 15px;
+        flex-shrink: 0;
+    }
+    .brand-name { font-weight: 700; font-size: 1.05rem; color: #F2F4F8; line-height: 1.1; }
+    .brand-sub { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.02em; }
+
+    .profile-chip {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    .profile-chip.ok { border-color: rgba(52, 211, 153, 0.35); }
+    .profile-chip.warn { border-color: rgba(245, 185, 66, 0.35); }
+    .profile-chip .label { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .profile-chip .value { color: #F2F4F8; font-weight: 600; margin-top: 2px; }
+
+    .sidebar-footer {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        padding-top: 0.5rem;
+    }
+
+    /* Sidebar nav (radio -> pill list) */
+    [data-testid="stSidebar"] [data-testid="stRadioGroup"] { gap: 2px; }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"] {
+        padding: 9px 12px;
+        border-radius: 8px;
+        transition: background 0.15s ease;
+        cursor: pointer;
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"]:hover {
+        background: var(--surface-hover);
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] {
+        background: var(--accent-dim);
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"] > div > div > div:first-child {
+        display: none;
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"] p {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #C6CBD9;
+        margin: 0;
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] p {
+        color: #F2F4F8;
+        font-weight: 600;
+    }
+
+    /* ---- Metrics ---- */
+    [data-testid="stMetric"] {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+    [data-testid="stMetricLabel"] p {
+        color: var(--text-muted) !important;
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    [data-testid="stMetricValue"] {
+        font-weight: 700 !important;
+        color: #F2F4F8 !important;
+    }
+
+    /* ---- Buttons ---- */
     .stButton>button {
         width: 100%;
         border-radius: 8px;
-        height: 3em;
+        height: 2.75em;
         font-weight: 600;
+        border: 1px solid var(--border);
+        transition: all 0.15s ease;
     }
+    .stButton>button[kind="primary"] {
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .stButton>button[kind="primary"]:hover {
+        background: #3D68E0;
+        border-color: #3D68E0;
+    }
+    .stButton>button[kind="secondary"]:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    /* ---- Cards ---- */
     .company-card {
-        padding: 15px 20px;
-        border-radius: 10px;
-        border: 2px solid #3b82f6;
-        margin-bottom: 15px;
-        background: #1a1a1a;
-        display: inline-block;
-        width: auto;
-        max-width: fit-content;
+        padding: 16px 20px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        margin-bottom: 12px;
+        transition: border-color 0.15s ease;
     }
+    .company-card:hover { border-color: rgba(76, 124, 255, 0.35); }
     .company-card h3 {
-        color: #ffffff;
+        color: #F2F4F8;
         margin: 0;
-        white-space: nowrap;
+        font-size: 1.05rem;
+        font-weight: 700;
     }
-    .match-score-high {
-        color: #10b981;
-        font-weight: bold;
-        font-size: 1.2em;
+
+    /* ---- Badges ---- */
+    .match-score-high, .match-score-medium, .match-score-low {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.85rem;
     }
-    .match-score-medium {
-        color: #f59e0b;
-        font-weight: bold;
-        font-size: 1.2em;
+    .match-score-high { color: var(--success); background: rgba(52, 211, 153, 0.12); }
+    .match-score-medium { color: var(--warning); background: rgba(245, 185, 66, 0.12); }
+    .match-score-low { color: var(--danger); background: rgba(241, 104, 94, 0.12); }
+
+    /* ---- Expanders ---- */
+    [data-testid="stExpander"] {
+        border: 1px solid var(--border) !important;
+        border-radius: 10px !important;
+        background: var(--surface);
     }
-    .match-score-low {
-        color: #ef4444;
-        font-weight: bold;
-        font-size: 1.2em;
+    [data-testid="stExpander"] summary { font-weight: 500; }
+
+    /* ---- Inputs ---- */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
+        border-radius: 8px !important;
+        border-color: var(--border) !important;
     }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 1px var(--accent) !important;
+    }
+
+    /* ---- Alerts ---- */
+    [data-testid="stAlertContainer"] {
+        border-radius: 10px !important;
+        border: 1px solid var(--border) !important;
+        background: var(--surface) !important;
+    }
+    [data-testid="stAlertContainer"] p { color: #DEE1EA !important; }
+    [data-testid="stAlertContentError"] { border-left: 3px solid var(--danger); }
+    [data-testid="stAlertContentWarning"] { border-left: 3px solid var(--warning); }
+    [data-testid="stAlertContentSuccess"] { border-left: 3px solid var(--success); }
+    [data-testid="stAlertContentInfo"] { border-left: 3px solid var(--accent); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,29 +228,48 @@ ai = st.session_state.ai if st.session_state.ai_available else None
 
 # Sidebar
 with st.sidebar:
-    st.title("AI Job Platform")
-    
+    st.markdown("""
+        <div class="brand">
+            <div class="brand-badge">AI</div>
+            <div>
+                <div class="brand-name">Job Platform</div>
+                <div class="brand-sub">CAREER INTELLIGENCE</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
     profile = db.get_profile()
     if profile:
-        st.success(f"Profile: {profile.get('name', 'User')}")
+        st.markdown(f"""
+            <div class="profile-chip ok">
+                <div class="label">Signed in as</div>
+                <div class="value">{profile.get('name', 'User')}</div>
+            </div>
+        """, unsafe_allow_html=True)
     else:
-        st.warning("Complete your profile first")
-    
+        st.markdown("""
+            <div class="profile-chip warn">
+                <div class="label">Setup required</div>
+                <div class="value">Complete your profile</div>
+            </div>
+        """, unsafe_allow_html=True)
+
     st.markdown("---")
-    
+
     page = st.radio(
         "Navigation",
         ["Profile Setup", "Discover Jobs", "My Applications", "Analytics"],
         label_visibility="collapsed"
     )
-    
+
     st.markdown("---")
     stats = db.get_statistics()
-    st.metric("Total Applications", stats['total'])
-    st.metric("Active Interviews", stats['interview'])
-    
+    col1, col2 = st.columns(2)
+    col1.metric("Applications", stats['total'])
+    col2.metric("Interviews", stats['interview'])
+
     st.markdown("---")
-    st.markdown("Built by Sunghoon Lee")
+    st.markdown('<div class="sidebar-footer">Built by Sunghoon Lee</div>', unsafe_allow_html=True)
 
 # ===== PROFILE SETUP PAGE =====
 if page == "Profile Setup":
@@ -310,7 +485,6 @@ elif page == "Discover Jobs":
                     }
                     db.add_application(new_app)
                     st.success(f"Added {company_info.get('name')} to your applications")
-                    st.balloons()
             
             # Detailed Analysis Section
             with st.expander("View Detailed Analysis"):
