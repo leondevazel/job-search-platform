@@ -18,10 +18,11 @@ st.markdown("""
 
     :root {
         --accent: #4C7CFF;
+        --accent-2: #7C6CF6;
         --accent-dim: rgba(76, 124, 255, 0.14);
-        --surface: #131722;
-        --surface-hover: #171c29;
-        --border: rgba(255, 255, 255, 0.08);
+        --surface: rgba(255, 255, 255, 0.035);
+        --surface-hover: rgba(255, 255, 255, 0.06);
+        --border: rgba(255, 255, 255, 0.09);
         --text-muted: #8992A6;
         --success: #34D399;
         --warning: #F5B942;
@@ -41,6 +42,30 @@ st.markdown("""
 
     hr { border: none; border-top: 1px solid var(--border); margin: 1.4rem 0; }
 
+    /* ---- Page header w/ ambient glow ---- */
+    .page-header { position: relative; padding-top: 0.25rem; margin-bottom: 0.75rem; }
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: -60px; left: -60px;
+        width: 320px; height: 220px;
+        background: radial-gradient(circle, rgba(76, 124, 255, 0.28), transparent 70%);
+        filter: blur(38px);
+        z-index: -1;
+        pointer-events: none;
+    }
+    .page-header h1 {
+        background: linear-gradient(135deg, #F7F9FC 40%, #B9C6F2 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    .page-header .page-subtitle {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin: 0.15rem 0 0;
+    }
+
     /* ---- Sidebar ---- */
     [data-testid="stSidebar"] {
         background: #0D1017;
@@ -49,23 +74,32 @@ st.markdown("""
     .brand {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 0.25rem 0 1rem;
+        gap: 11px;
+        padding: 0.25rem 0 1.1rem;
     }
-    .brand-badge {
-        width: 34px; height: 34px;
-        border-radius: 9px;
-        background: linear-gradient(135deg, var(--accent), #7C6CF6);
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 800; color: white; font-size: 15px;
+    .brand-mark {
+        width: 3px;
+        height: 28px;
+        border-radius: 2px;
+        background: linear-gradient(180deg, var(--accent), var(--accent-2));
         flex-shrink: 0;
+        box-shadow: 0 0 12px rgba(76, 124, 255, 0.55);
     }
-    .brand-name { font-weight: 700; font-size: 1.05rem; color: #F2F4F8; line-height: 1.1; }
-    .brand-sub { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.02em; }
+    .brand-name {
+        font-weight: 800;
+        font-size: 1.08rem;
+        line-height: 1.15;
+        background: linear-gradient(135deg, #FFFFFF 30%, #A9B8F0 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    .brand-sub { font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.08em; }
 
     .profile-chip {
         border: 1px solid var(--border);
         background: var(--surface);
+        backdrop-filter: blur(14px);
         border-radius: 10px;
         padding: 10px 12px;
         font-size: 0.85rem;
@@ -113,7 +147,9 @@ st.markdown("""
     /* ---- Metrics ---- */
     [data-testid="stMetric"] {
         background: var(--surface);
+        backdrop-filter: blur(14px);
         border: 1px solid var(--border);
+        border-top: 2px solid var(--accent);
         border-radius: 10px;
         padding: 12px 14px;
     }
@@ -135,56 +171,81 @@ st.markdown("""
         height: 2.75em;
         font-weight: 600;
         border: 1px solid var(--border);
-        transition: all 0.15s ease;
+        transition: all 0.18s ease;
     }
     .stButton>button[kind="primary"] {
-        background: var(--accent);
-        border: 1px solid var(--accent);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border: 1px solid transparent;
+        box-shadow: 0 2px 10px rgba(76, 124, 255, 0.28);
     }
     .stButton>button[kind="primary"]:hover {
-        background: #3D68E0;
-        border-color: #3D68E0;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(76, 124, 255, 0.4);
     }
     .stButton>button[kind="secondary"]:hover {
         border-color: var(--accent);
         color: var(--accent);
+        transform: translateY(-1px);
     }
 
-    /* ---- Cards ---- */
+    /* ---- Company card w/ score ring ---- */
     .company-card {
-        padding: 16px 20px;
-        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 20px;
+        border-radius: 14px;
         border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
         background: var(--surface);
+        backdrop-filter: blur(14px);
         margin-bottom: 12px;
-        transition: border-color 0.15s ease;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     }
-    .company-card:hover { border-color: rgba(76, 124, 255, 0.35); }
+    .company-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+        border-color: rgba(255, 255, 255, 0.18);
+    }
     .company-card h3 {
         color: #F2F4F8;
-        margin: 0;
-        font-size: 1.05rem;
+        margin: 0 0 2px;
+        font-size: 1.02rem;
         font-weight: 700;
     }
-
-    /* ---- Badges ---- */
-    .match-score-high, .match-score-medium, .match-score-low {
-        display: inline-block;
-        padding: 2px 10px;
-        border-radius: 999px;
-        font-weight: 600;
-        font-size: 0.85rem;
+    .company-card .tier-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
-    .match-score-high { color: var(--success); background: rgba(52, 211, 153, 0.12); }
-    .match-score-medium { color: var(--warning); background: rgba(245, 185, 66, 0.12); }
-    .match-score-low { color: var(--danger); background: rgba(241, 104, 94, 0.12); }
+    .score-ring {
+        width: 52px;
+        height: 52px;
+        min-width: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .score-ring-inner {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #0C0F17;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
 
     /* ---- Expanders ---- */
     [data-testid="stExpander"] {
         border: 1px solid var(--border) !important;
         border-radius: 10px !important;
         background: var(--surface);
+        backdrop-filter: blur(14px);
     }
     [data-testid="stExpander"] summary { font-weight: 500; }
 
@@ -203,12 +264,37 @@ st.markdown("""
         border-radius: 10px !important;
         border: 1px solid var(--border) !important;
         background: var(--surface) !important;
+        backdrop-filter: blur(14px);
     }
     [data-testid="stAlertContainer"] p { color: #DEE1EA !important; }
     [data-testid="stAlertContentError"] { border-left: 3px solid var(--danger); }
     [data-testid="stAlertContentWarning"] { border-left: 3px solid var(--warning); }
     [data-testid="stAlertContentSuccess"] { border-left: 3px solid var(--success); }
     [data-testid="stAlertContentInfo"] { border-left: 3px solid var(--accent); }
+
+    /* ---- Timeline (Recent Activity) ---- */
+    .timeline { position: relative; padding-left: 18px; margin-top: 4px; }
+    .timeline-item { position: relative; padding-bottom: 20px; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -18px; top: 4px;
+        width: 9px; height: 9px;
+        border-radius: 50%;
+        background: var(--dot-color, var(--accent));
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+    }
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: -14px; top: 15px; bottom: -6px;
+        width: 1px;
+        background: var(--border);
+    }
+    .timeline-item:last-child::after { display: none; }
+    .timeline-item .t-title { font-weight: 600; color: #F2F4F8; font-size: 0.92rem; }
+    .timeline-item .t-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -226,11 +312,20 @@ if 'ai' not in st.session_state:
 db = st.session_state.db
 ai = st.session_state.ai if st.session_state.ai_available else None
 
+
+def page_header(title, subtitle):
+    st.markdown(f"""
+        <div class="page-header">
+            <h1>{title}</h1>
+            <p class="page-subtitle">{subtitle}</p>
+        </div>
+    """, unsafe_allow_html=True)
+
 # Sidebar
 with st.sidebar:
     st.markdown("""
         <div class="brand">
-            <div class="brand-badge">AI</div>
+            <span class="brand-mark"></span>
             <div>
                 <div class="brand-name">Job Platform</div>
                 <div class="brand-sub">CAREER INTELLIGENCE</div>
@@ -273,8 +368,7 @@ with st.sidebar:
 
 # ===== PROFILE SETUP PAGE =====
 if page == "Profile Setup":
-    st.title("Profile Setup")
-    st.markdown("Set up your profile to get personalized job recommendations")
+    page_header("Profile Setup", "Set up your profile to get personalized job recommendations")
     
     current_profile = db.get_profile() or {}
     
@@ -358,8 +452,7 @@ if page == "Profile Setup":
 
 # ===== DISCOVER JOBS PAGE =====
 elif page == "Discover Jobs":
-    st.title("Discover Jobs")
-    st.markdown("AI-powered job recommendations tailored to your profile")
+    page_header("Discover Jobs", "AI-powered job recommendations tailored to your profile")
     
     profile = db.get_profile()
     
@@ -445,26 +538,34 @@ elif page == "Discover Jobs":
             
             try:
                 score_num = int(company_info.get('score', '0%').replace('%', ''))
-                if score_num >= 80:
-                    score_class = "match-score-high"
-                elif score_num >= 60:
-                    score_class = "match-score-medium"
-                else:
-                    score_class = "match-score-low"
             except:
-                score_class = "match-score-medium"
-            
-            # Company name card - inline block with auto width
+                score_num = 0
+
+            if score_num >= 80:
+                tier_color, tier_label = "var(--success)", "Strong fit"
+            elif score_num >= 60:
+                tier_color, tier_label = "var(--warning)", "Good fit"
+            else:
+                tier_color, tier_label = "var(--danger)", "Possible fit"
+
+            ring_deg = max(0, min(score_num, 100)) * 3.6
+
+            # Company header card with circular score ring
             st.markdown(f"""
-            <div class="company-card">
-                <h3>{company_info.get('name', 'Unknown')} - {company_info.get('position', 'N/A')}</h3>
+            <div class="company-card" style="border-left-color:{tier_color};">
+                <div class="score-ring" style="background: conic-gradient({tier_color} {ring_deg}deg, rgba(255,255,255,0.08) {ring_deg}deg 360deg);">
+                    <div class="score-ring-inner" style="color:{tier_color};">{score_num}%</div>
+                </div>
+                <div class="company-card-info">
+                    <h3>{company_info.get('name', 'Unknown')} &mdash; {company_info.get('position', 'N/A')}</h3>
+                    <span class="tier-label" style="color:{tier_color};">{tier_label}</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
-            
+
             col1, col2 = st.columns([3, 1])
-            
+
             with col1:
-                st.markdown(f"**Match Score:** <span class='{score_class}'>{company_info.get('score', 'N/A')}</span>", unsafe_allow_html=True)
                 st.write(f"**Why Good Match:** {company_info.get('match', 'N/A')}")
                 
                 with st.expander("View Details"):
@@ -559,8 +660,7 @@ elif page == "Discover Jobs":
 
 # ===== MY APPLICATIONS PAGE =====
 elif page == "My Applications":
-    st.title("My Applications")
-    st.markdown("Track and manage your job applications")
+    page_header("My Applications", "Track and manage your job applications")
     
     apps = db.get_all_applications()
     stats = db.get_statistics()
@@ -672,8 +772,7 @@ elif page == "My Applications":
 
 # ===== ANALYTICS PAGE =====
 elif page == "Analytics":
-    st.title("Analytics")
-    st.markdown("Job search insights")
+    page_header("Analytics", "Job search insights")
     
     apps = db.get_all_applications()
     stats = db.get_statistics()
@@ -690,11 +789,23 @@ elif page == "Analytics":
                 "Interview": stats['interview'],
                 "Offer": stats['offer'],
                 "Rejected": stats['rejected']
-            })
+            }, color="#4C7CFF")
         
         with col2:
             st.subheader("Recent Activity")
-            for app in apps[:5]:
-                st.write(f"**{app['company']}** - {app['position']}")
-                st.caption(f"{app['status']} on {app['date_applied']}")
-                st.markdown("---")
+
+            status_color = {
+                "Applied": "var(--accent)",
+                "Interview": "var(--warning)",
+                "Offer": "var(--success)",
+                "Rejected": "var(--danger)",
+            }
+
+            items = "".join(f"""
+                <div class="timeline-item" style="--dot-color: {status_color.get(app.get('status'), 'var(--accent)')};">
+                    <div class="t-title">{app['company']} &mdash; {app['position']}</div>
+                    <div class="t-meta">{app['status']} on {app['date_applied']}</div>
+                </div>
+            """ for app in apps[:5])
+
+            st.markdown(f'<div class="timeline">{items}</div>', unsafe_allow_html=True)
