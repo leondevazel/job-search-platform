@@ -14,101 +14,82 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
     :root {
-        --accent: #4C7CFF;
-        --accent-2: #7C6CF6;
-        --accent-dim: rgba(76, 124, 255, 0.14);
-        --surface: rgba(255, 255, 255, 0.035);
-        --surface-hover: rgba(255, 255, 255, 0.06);
-        --border: rgba(255, 255, 255, 0.09);
-        --text-muted: #8992A6;
-        --success: #34D399;
-        --warning: #F5B942;
-        --danger: #F1685E;
+        --accent: #0071E3;
+        --accent-hover: #0077ED;
+        --accent-tint: rgba(0, 113, 227, 0.08);
+        --surface: #FFFFFF;
+        --surface-hover: #F5F5F7;
+        --border: #D2D2D7;
+        --text: #1D1D1F;
+        --text-muted: #6E6E73;
+        --success: #1D8A3D;
+        --success-tint: rgba(52, 199, 89, 0.12);
+        --warning: #B3610A;
+        --warning-tint: rgba(255, 149, 0, 0.12);
+        --danger: #D70015;
+        --danger-tint: rgba(255, 59, 48, 0.1);
     }
 
     html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text);
     }
 
-    .main { padding: 1.5rem 2rem 3rem; }
+    .main { padding: 2rem 3rem 4rem; }
 
     /* ---- Headings ---- */
-    h1 { font-weight: 800 !important; letter-spacing: -0.02em; margin-bottom: 0.1rem !important; }
-    h2, h3 { font-weight: 700 !important; letter-spacing: -0.01em; }
+    h1 { font-weight: 600 !important; letter-spacing: -0.03em; color: var(--text) !important; }
+    h2, h3 { font-weight: 600 !important; letter-spacing: -0.02em; color: var(--text) !important; }
     .stMarkdown p { color: var(--text-muted); }
 
-    hr { border: none; border-top: 1px solid var(--border); margin: 1.4rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 
-    /* ---- Page header w/ ambient glow ---- */
-    .page-header { position: relative; padding-top: 0.25rem; margin-bottom: 0.75rem; }
-    .page-header::before {
-        content: '';
-        position: absolute;
-        top: -60px; left: -60px;
-        width: 320px; height: 220px;
-        background: radial-gradient(circle, rgba(76, 124, 255, 0.28), transparent 70%);
-        filter: blur(38px);
-        z-index: -1;
-        pointer-events: none;
-    }
-    .page-header h1 {
-        background: linear-gradient(135deg, #F7F9FC 40%, #B9C6F2 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-    }
+    /* ---- Page header ---- */
+    .page-header { padding-top: 0.25rem; margin-bottom: 0.5rem; }
+    .page-header h1 { font-size: 2.4rem; margin: 0; }
     .page-header .page-subtitle {
         color: var(--text-muted);
-        font-size: 0.95rem;
-        margin: 0.15rem 0 0;
+        font-size: 1.05rem;
+        margin: 0.35rem 0 0;
     }
 
     /* ---- Sidebar ---- */
     [data-testid="stSidebar"] {
-        background: #0D1017;
+        background: var(--surface-hover);
         border-right: 1px solid var(--border);
     }
     .brand {
         display: flex;
         align-items: center;
-        gap: 11px;
+        gap: 10px;
         padding: 0.25rem 0 1.1rem;
     }
     .brand-mark {
-        width: 3px;
-        height: 28px;
-        border-radius: 2px;
-        background: linear-gradient(180deg, var(--accent), var(--accent-2));
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
         flex-shrink: 0;
-        box-shadow: 0 0 12px rgba(76, 124, 255, 0.55);
     }
     .brand-name {
-        font-weight: 800;
-        font-size: 1.08rem;
+        font-weight: 600;
+        font-size: 1.05rem;
         line-height: 1.15;
-        background: linear-gradient(135deg, #FFFFFF 30%, #A9B8F0 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        color: var(--text);
     }
-    .brand-sub { font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.08em; }
+    .brand-sub { font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.06em; }
 
     .profile-chip {
         border: 1px solid var(--border);
         background: var(--surface);
-        backdrop-filter: blur(14px);
-        border-radius: 10px;
+        border-radius: 12px;
         padding: 10px 12px;
         font-size: 0.85rem;
         margin-bottom: 0.5rem;
     }
-    .profile-chip.ok { border-color: rgba(52, 211, 153, 0.35); }
-    .profile-chip.warn { border-color: rgba(245, 185, 66, 0.35); }
-    .profile-chip .label { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .profile-chip .value { color: #F2F4F8; font-weight: 600; margin-top: 2px; }
+    .profile-chip .label { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .profile-chip .value { color: var(--text); font-weight: 600; margin-top: 2px; }
 
     .sidebar-footer {
         color: var(--text-muted);
@@ -119,154 +100,142 @@ st.markdown("""
     /* Sidebar nav (radio -> pill list) */
     [data-testid="stSidebar"] [data-testid="stRadioGroup"] { gap: 2px; }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"] {
-        padding: 9px 12px;
+        padding: 8px 12px;
         border-radius: 8px;
         transition: background 0.15s ease;
         cursor: pointer;
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"]:hover {
-        background: var(--surface-hover);
+        background: rgba(0, 0, 0, 0.04);
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] {
-        background: var(--accent-dim);
+        background: var(--accent-tint);
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"] > div > div > div:first-child {
         display: none;
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"] p {
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: #C6CBD9;
+        font-size: 0.92rem;
+        font-weight: 400;
+        color: var(--text);
         margin: 0;
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] p {
-        color: #F2F4F8;
+        color: var(--accent);
         font-weight: 600;
     }
 
     /* ---- Metrics ---- */
     [data-testid="stMetric"] {
-        background: var(--surface);
-        backdrop-filter: blur(14px);
-        border: 1px solid var(--border);
-        border-top: 2px solid var(--accent);
-        border-radius: 10px;
-        padding: 12px 14px;
+        background: transparent;
+        padding: 0;
     }
     [data-testid="stMetricLabel"] p {
         color: var(--text-muted) !important;
-        font-size: 0.72rem !important;
+        font-size: 0.78rem !important;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.03em;
     }
     [data-testid="stMetricValue"] {
-        font-weight: 700 !important;
-        color: #F2F4F8 !important;
+        font-weight: 600 !important;
+        color: var(--text) !important;
+        font-size: 2rem !important;
     }
 
     /* ---- Buttons ---- */
     .stButton>button {
         width: 100%;
-        border-radius: 8px;
-        height: 2.75em;
-        font-weight: 600;
+        border-radius: 980px;
+        height: 2.7em;
+        font-weight: 400;
+        font-size: 0.95rem;
         border: 1px solid var(--border);
-        transition: all 0.18s ease;
+        background: var(--surface);
+        color: var(--text);
+        transition: all 0.15s ease;
+    }
+    .stButton>button:hover {
+        border-color: var(--text-muted);
+        background: var(--surface-hover);
     }
     .stButton>button[kind="primary"] {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        border: 1px solid transparent;
-        box-shadow: 0 2px 10px rgba(76, 124, 255, 0.28);
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: #FFFFFF;
     }
     .stButton>button[kind="primary"]:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 18px rgba(76, 124, 255, 0.4);
-    }
-    .stButton>button[kind="secondary"]:hover {
-        border-color: var(--accent);
-        color: var(--accent);
-        transform: translateY(-1px);
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
     }
 
     /* ---- Company card w/ score ring ---- */
     .company-card {
         display: flex;
         align-items: center;
-        gap: 16px;
-        padding: 14px 20px;
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        border-left: 3px solid var(--accent);
-        background: var(--surface);
-        backdrop-filter: blur(14px);
-        margin-bottom: 12px;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-    }
-    .company-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
-        border-color: rgba(255, 255, 255, 0.18);
+        gap: 18px;
+        padding: 18px 4px;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+        margin-bottom: 4px;
     }
     .company-card h3 {
-        color: #F2F4F8;
+        color: var(--text);
         margin: 0 0 2px;
-        font-size: 1.02rem;
-        font-weight: 700;
+        font-size: 1.08rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
     }
     .company-card .tier-label {
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        font-size: 0.78rem;
+        font-weight: 500;
     }
     .score-ring {
-        width: 52px;
-        height: 52px;
-        min-width: 52px;
+        width: 54px;
+        height: 54px;
+        min-width: 54px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
     }
     .score-ring-inner {
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
-        background: #0C0F17;
+        background: #FFFFFF;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.72rem;
-        font-weight: 700;
+        font-size: 0.78rem;
+        font-weight: 600;
     }
 
     /* ---- Expanders ---- */
     [data-testid="stExpander"] {
         border: 1px solid var(--border) !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         background: var(--surface);
-        backdrop-filter: blur(14px);
     }
-    [data-testid="stExpander"] summary { font-weight: 500; }
+    [data-testid="stExpander"] summary { font-weight: 400; }
 
     /* ---- Inputs ---- */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         border-color: var(--border) !important;
     }
     .stTextInput input:focus, .stTextArea textarea:focus {
         border-color: var(--accent) !important;
-        box-shadow: 0 0 0 1px var(--accent) !important;
+        box-shadow: 0 0 0 3px var(--accent-tint) !important;
     }
 
     /* ---- Alerts ---- */
     [data-testid="stAlertContainer"] {
         border-radius: 10px !important;
         border: 1px solid var(--border) !important;
-        background: var(--surface) !important;
-        backdrop-filter: blur(14px);
+        background: var(--surface-hover) !important;
     }
-    [data-testid="stAlertContainer"] p { color: #DEE1EA !important; }
+    [data-testid="stAlertContainer"] p { color: var(--text) !important; }
     [data-testid="stAlertContentError"] { border-left: 3px solid var(--danger); }
     [data-testid="stAlertContentWarning"] { border-left: 3px solid var(--warning); }
     [data-testid="stAlertContentSuccess"] { border-left: 3px solid var(--success); }
@@ -280,21 +249,20 @@ st.markdown("""
         content: '';
         position: absolute;
         left: -18px; top: 4px;
-        width: 9px; height: 9px;
+        width: 8px; height: 8px;
         border-radius: 50%;
         background: var(--dot-color, var(--accent));
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
     }
     .timeline-item::after {
         content: '';
         position: absolute;
-        left: -14px; top: 15px; bottom: -6px;
+        left: -14px; top: 14px; bottom: -6px;
         width: 1px;
         background: var(--border);
     }
     .timeline-item:last-child::after { display: none; }
-    .timeline-item .t-title { font-weight: 600; color: #F2F4F8; font-size: 0.92rem; }
-    .timeline-item .t-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+    .timeline-item .t-title { font-weight: 500; color: var(--text); font-size: 0.94rem; }
+    .timeline-item .t-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -336,14 +304,14 @@ with st.sidebar:
     profile = db.get_profile()
     if profile:
         st.markdown(f"""
-            <div class="profile-chip ok">
+            <div class="profile-chip">
                 <div class="label">Signed in as</div>
                 <div class="value">{profile.get('name', 'User')}</div>
             </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-            <div class="profile-chip warn">
+            <div class="profile-chip">
                 <div class="label">Setup required</div>
                 <div class="value">Complete your profile</div>
             </div>
@@ -552,8 +520,8 @@ elif page == "Discover Jobs":
 
             # Company header card with circular score ring
             st.markdown(f"""
-            <div class="company-card" style="border-left-color:{tier_color};">
-                <div class="score-ring" style="background: conic-gradient({tier_color} {ring_deg}deg, rgba(255,255,255,0.08) {ring_deg}deg 360deg);">
+            <div class="company-card">
+                <div class="score-ring" style="background: conic-gradient({tier_color} {ring_deg}deg, rgba(0,0,0,0.08) {ring_deg}deg 360deg);">
                     <div class="score-ring-inner" style="color:{tier_color};">{score_num}%</div>
                 </div>
                 <div class="company-card-info">
@@ -789,7 +757,7 @@ elif page == "Analytics":
                 "Interview": stats['interview'],
                 "Offer": stats['offer'],
                 "Rejected": stats['rejected']
-            }, color="#4C7CFF")
+            }, color="#0071E3")
         
         with col2:
             st.subheader("Recent Activity")
