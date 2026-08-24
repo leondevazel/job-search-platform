@@ -1,4 +1,6 @@
 import streamlit as st
+import altair as alt
+import pandas as pd
 from database import Database
 from ai_helper import AIHelper
 from datetime import datetime
@@ -11,33 +13,82 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
-st.markdown("""
-    <style>
-    :root {
-        --accent: #0071E3;
-        --accent-hover: #0077ED;
-        --accent-tint: rgba(0, 113, 227, 0.08);
-        --surface: #FFFFFF;
-        --surface-hover: #F5F5F7;
-        --border: #D2D2D7;
-        --text: #1D1D1F;
-        --text-muted: #6E6E73;
-        --success: #1D8A3D;
-        --success-tint: rgba(52, 199, 89, 0.12);
-        --warning: #B3610A;
-        --warning-tint: rgba(255, 149, 0, 0.12);
-        --danger: #D70015;
-        --danger-tint: rgba(255, 59, 48, 0.1);
-    }
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
 
-    html, body, [class*="css"] {
+if st.session_state.dark_mode:
+    palette = {
+        "bg": "#000000",
+        "accent": "#0A84FF",
+        "accent-hover": "#409CFF",
+        "accent-tint": "rgba(10, 132, 255, 0.16)",
+        "surface": "#1C1C1E",
+        "surface-hover": "#2C2C2E",
+        "hover-tint": "rgba(255, 255, 255, 0.06)",
+        "border": "#38383A",
+        "text": "#F5F5F7",
+        "text-muted": "#98989D",
+        "success": "#32D74B",
+        "warning": "#FF9F0A",
+        "danger": "#FF453A",
+    }
+    ring_track = "rgba(255, 255, 255, 0.12)"
+else:
+    palette = {
+        "bg": "#FFFFFF",
+        "accent": "#0071E3",
+        "accent-hover": "#0077ED",
+        "accent-tint": "rgba(0, 113, 227, 0.08)",
+        "surface": "#FFFFFF",
+        "surface-hover": "#F5F5F7",
+        "hover-tint": "rgba(0, 0, 0, 0.04)",
+        "border": "#D2D2D7",
+        "text": "#1D1D1F",
+        "text-muted": "#6E6E73",
+        "success": "#1D8A3D",
+        "warning": "#B3610A",
+        "danger": "#D70015",
+    }
+    ring_track = "rgba(0, 0, 0, 0.08)"
+
+# Custom CSS
+st.markdown(f"""
+    <style>
+    :root {{
+        --accent: {palette['accent']};
+        --accent-hover: {palette['accent-hover']};
+        --accent-tint: {palette['accent-tint']};
+        --bg: {palette['bg']};
+        --surface: {palette['surface']};
+        --surface-hover: {palette['surface-hover']};
+        --hover-tint: {palette['hover-tint']};
+        --border: {palette['border']};
+        --text: {palette['text']};
+        --text-muted: {palette['text-muted']};
+        --success: {palette['success']};
+        --warning: {palette['warning']};
+        --danger: {palette['danger']};
+    }}
+
+    html, body, [class*="css"] {{
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         color: var(--text);
-    }
+    }}
 
-    .main { padding: 2rem 3rem 4rem; }
+    body,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    [data-testid="stHeader"],
+    [data-testid="stBottomBlockContainer"] {{
+        background: var(--bg) !important;
+    }}
 
+    .main {{ padding: 2rem 3rem 4rem; }}
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+    <style>
     /* ---- Headings ---- */
     h1 { font-weight: 600 !important; letter-spacing: -0.03em; color: var(--text) !important; }
     h2, h3 { font-weight: 600 !important; letter-spacing: -0.02em; color: var(--text) !important; }
@@ -106,7 +157,7 @@ st.markdown("""
         cursor: pointer;
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"]:hover {
-        background: rgba(0, 0, 0, 0.04);
+        background: var(--hover-tint);
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] {
         background: var(--accent-tint);
@@ -203,7 +254,7 @@ st.markdown("""
         width: 42px;
         height: 42px;
         border-radius: 50%;
-        background: #FFFFFF;
+        background: var(--bg);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -217,16 +268,43 @@ st.markdown("""
         border-radius: 12px !important;
         background: var(--surface);
     }
-    [data-testid="stExpander"] summary { font-weight: 400; }
+    [data-testid="stExpander"] summary {
+        font-weight: 400;
+        background: var(--surface) !important;
+        color: var(--text) !important;
+    }
+    [data-testid="stExpander"] summary span[data-testid="stIconMaterial"] {
+        color: var(--text-muted) !important;
+    }
+    [data-testid="stExpanderDetails"] { background: var(--surface) !important; }
 
     /* ---- Inputs ---- */
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
+    .stTextInput input, .stTextArea textarea, .stNumberInput input,
+    .stSelectbox input, .stSelectbox [role="group"] {
         border-radius: 10px !important;
         border-color: var(--border) !important;
+        background: var(--surface-hover) !important;
+        color: var(--text) !important;
     }
     .stTextInput input:focus, .stTextArea textarea:focus {
         border-color: var(--accent) !important;
         box-shadow: 0 0 0 3px var(--accent-tint) !important;
+    }
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder {
+        color: var(--text-muted) !important;
+        opacity: 1;
+    }
+    .stSelectbox button { color: var(--text) !important; }
+
+    /* Selectbox dropdown popover (portalled to body) */
+    [role="listbox"] {
+        background: var(--surface-hover) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 10px !important;
+    }
+    [role="option"] { color: var(--text) !important; }
+    [role="option"][aria-selected="true"], [role="option"][data-focused="true"] {
+        background: var(--accent-tint) !important;
     }
 
     /* ---- Alerts ---- */
@@ -332,6 +410,8 @@ with st.sidebar:
     col2.metric("Interviews", stats['interview'])
 
     st.markdown("---")
+    st.toggle("Dark Mode", key="dark_mode")
+
     st.markdown('<div class="sidebar-footer">Built by Sunghoon Lee</div>', unsafe_allow_html=True)
 
 # ===== PROFILE SETUP PAGE =====
@@ -521,7 +601,7 @@ elif page == "Discover Jobs":
             # Company header card with circular score ring
             st.markdown(f"""
             <div class="company-card">
-                <div class="score-ring" style="background: conic-gradient({tier_color} {ring_deg}deg, rgba(0,0,0,0.08) {ring_deg}deg 360deg);">
+                <div class="score-ring" style="background: conic-gradient({tier_color} {ring_deg}deg, {ring_track} {ring_deg}deg 360deg);">
                     <div class="score-ring-inner" style="color:{tier_color};">{score_num}%</div>
                 </div>
                 <div class="company-card-info">
@@ -752,12 +832,23 @@ elif page == "Analytics":
         
         with col1:
             st.subheader("Status Distribution")
-            st.bar_chart({
-                "Applied": stats['applied'],
-                "Interview": stats['interview'],
-                "Offer": stats['offer'],
-                "Rejected": stats['rejected']
-            }, color="#0071E3")
+
+            status_df = pd.DataFrame({
+                "Status": ["Applied", "Interview", "Offer", "Rejected"],
+                "Count": [stats['applied'], stats['interview'], stats['offer'], stats['rejected']],
+            })
+            axis = alt.Axis(
+                labelColor=palette["text-muted"],
+                titleColor=palette["text-muted"],
+                domainColor=palette["border"],
+                tickColor=palette["border"],
+                gridColor=palette["border"],
+            )
+            chart = alt.Chart(status_df).mark_bar(color=palette["accent"], size=40).encode(
+                x=alt.X("Status", sort=None, title=None, axis=axis),
+                y=alt.Y("Count", title=None, axis=axis),
+            ).properties(background=palette["bg"])
+            st.altair_chart(chart, use_container_width=True)
         
         with col2:
             st.subheader("Recent Activity")
