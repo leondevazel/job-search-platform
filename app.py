@@ -32,7 +32,6 @@ if st.session_state.dark_mode:
         "warning": "#FF9F0A",
         "danger": "#FF453A",
     }
-    ring_track = "rgba(255, 255, 255, 0.12)"
 else:
     palette = {
         "bg": "#FFFFFF",
@@ -49,7 +48,6 @@ else:
         "warning": "#B3610A",
         "danger": "#D70015",
     }
-    ring_track = "rgba(0, 0, 0, 0.08)"
 
 # Custom CSS
 st.markdown(f"""
@@ -89,6 +87,29 @@ st.markdown(f"""
 
 st.markdown("""
     <style>
+    /* ---- Motion ---- */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.001ms !important;
+            animation-delay: 0ms !important;
+            transition-duration: 0.001ms !important;
+        }
+    }
+
+    /* Smooth light/dark theme swap instead of a hard cut */
+    body,
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stHeader"],
+    [data-testid="stSidebar"], [data-testid="stMetric"], [data-testid="stExpander"],
+    [data-testid="stExpanderDetails"], [data-testid="stAlertContainer"],
+    .stTextInput input, .stTextArea textarea, .stSelectbox input, .stSelectbox [role="group"],
+    .stButton>button, .company-card, .profile-chip, hr {
+        transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+    }
+
     /* ---- Headings ---- */
     h1 { font-weight: 600 !important; letter-spacing: -0.03em; color: var(--text) !important; }
     h2, h3 { font-weight: 600 !important; letter-spacing: -0.02em; color: var(--text) !important; }
@@ -97,7 +118,12 @@ st.markdown("""
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 
     /* ---- Page header ---- */
-    .page-header { padding-top: 0.25rem; margin-bottom: 0.5rem; }
+    .page-header {
+        padding-top: 0.25rem;
+        margin-bottom: 0.5rem;
+        opacity: 0;
+        animation: fadeInUp 0.45s ease-out forwards;
+    }
     .page-header h1 { font-size: 2.4rem; margin: 0; }
     .page-header .page-subtitle {
         color: var(--text-muted);
@@ -153,11 +179,12 @@ st.markdown("""
     [data-testid="stSidebar"] label[data-testid="stRadioOption"] {
         padding: 8px 12px;
         border-radius: 8px;
-        transition: background 0.15s ease;
+        transition: background 0.15s ease, padding-left 0.15s ease;
         cursor: pointer;
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"]:hover {
         background: var(--hover-tint);
+        padding-left: 16px;
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] {
         background: var(--accent-tint);
@@ -209,6 +236,7 @@ st.markdown("""
         border-color: var(--text-muted);
         background: var(--surface-hover);
     }
+    .stButton>button:active { transform: scale(0.97); }
     .stButton>button[kind="primary"] {
         background: var(--accent);
         border: 1px solid var(--accent);
@@ -219,17 +247,27 @@ st.markdown("""
         border-color: var(--accent-hover);
     }
 
+    /* Spinner */
+    .stSpinner > div { border-top-color: var(--accent) !important; }
+    .stSpinner p { color: var(--text-muted) !important; }
+
     /* ---- Company card w/ score ring ---- */
     .company-card {
         display: flex;
         align-items: center;
         gap: 18px;
-        padding: 18px 4px;
+        padding: 18px 10px;
         border: none;
         border-bottom: 1px solid var(--border);
+        border-radius: 10px;
         background: transparent;
         margin-bottom: 4px;
+        opacity: 0;
+        animation: fadeInUp 0.5s ease-out forwards;
+        animation-delay: calc(var(--i, 0) * 70ms + 60ms);
+        transition: background 0.2s ease;
     }
+    .company-card:hover { background: var(--surface-hover); }
     .company-card h3 {
         color: var(--text);
         margin: 0 0 2px;
@@ -242,17 +280,24 @@ st.markdown("""
         font-weight: 500;
     }
     .score-ring {
+        position: relative;
         width: 54px;
         height: 54px;
         min-width: 54px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
     }
+    .score-ring svg { transform: rotate(-90deg); overflow: visible; }
+    .ring-track { fill: none; stroke: var(--border); stroke-width: 4; }
+    .ring-progress {
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+        animation: ringFill 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        animation-delay: calc(var(--i, 0) * 70ms + 200ms);
+    }
+    @keyframes ringFill { from { stroke-dashoffset: 150.8; } }
     .score-ring-inner {
-        width: 42px;
-        height: 42px;
+        position: absolute;
+        inset: 6px;
         border-radius: 50%;
         background: var(--bg);
         display: flex;
@@ -321,7 +366,13 @@ st.markdown("""
 
     /* ---- Timeline (Recent Activity) ---- */
     .timeline { position: relative; padding-left: 18px; margin-top: 4px; }
-    .timeline-item { position: relative; padding-bottom: 20px; }
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+        opacity: 0;
+        animation: fadeInUp 0.45s ease-out forwards;
+        animation-delay: calc(var(--i, 0) * 80ms + 100ms);
+    }
     .timeline-item:last-child { padding-bottom: 0; }
     .timeline-item::before {
         content: '';
@@ -596,12 +647,22 @@ elif page == "Discover Jobs":
             else:
                 tier_color, tier_label = "var(--danger)", "Possible fit"
 
-            ring_deg = max(0, min(score_num, 100)) * 3.6
+            ring_circumference = 150.8
+            ring_offset = ring_circumference * (1 - max(0, min(score_num, 100)) / 100)
+            stagger = min(idx, 8)
 
-            # Company header card with circular score ring
+            # Company header card with an animated circular score ring
             st.markdown(f"""
-            <div class="company-card">
-                <div class="score-ring" style="background: conic-gradient({tier_color} {ring_deg}deg, {ring_track} {ring_deg}deg 360deg);">
+            <div class="company-card" style="--i:{stagger};">
+                <div class="score-ring">
+                    <svg viewBox="0 0 56 56" width="54" height="54">
+                        <circle class="ring-track" cx="28" cy="28" r="24" />
+                        <circle class="ring-progress" cx="28" cy="28" r="24"
+                            stroke="{tier_color}"
+                            stroke-dasharray="{ring_circumference}"
+                            stroke-dashoffset="{ring_offset}"
+                            style="--i:{stagger};" />
+                    </svg>
                     <div class="score-ring-inner" style="color:{tier_color};">{score_num}%</div>
                 </div>
                 <div class="company-card-info">
@@ -861,10 +922,10 @@ elif page == "Analytics":
             }
 
             items = "".join(f"""
-                <div class="timeline-item" style="--dot-color: {status_color.get(app.get('status'), 'var(--accent)')};">
+                <div class="timeline-item" style="--dot-color: {status_color.get(app.get('status'), 'var(--accent)')}; --i:{i};">
                     <div class="t-title">{app['company']} &mdash; {app['position']}</div>
                     <div class="t-meta">{app['status']} on {app['date_applied']}</div>
                 </div>
-            """ for app in apps[:5])
+            """ for i, app in enumerate(apps[:5]))
 
             st.markdown(f'<div class="timeline">{items}</div>', unsafe_allow_html=True)
