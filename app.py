@@ -23,6 +23,7 @@ if st.session_state.dark_mode:
         "accent-rgb": "10, 132, 255",
         "accent-hover": "#409CFF",
         "accent-tint": "rgba(10, 132, 255, 0.16)",
+        "accent-text": "#5CACFF",
         "surface": "#1C1C1E",
         "surface-hover": "#2C2C2E",
         "hover-tint": "rgba(255, 255, 255, 0.06)",
@@ -40,6 +41,7 @@ else:
         "accent-rgb": "0, 113, 227",
         "accent-hover": "#0077ED",
         "accent-tint": "rgba(0, 113, 227, 0.08)",
+        "accent-text": "#0058B0",
         "surface": "#FFFFFF",
         "surface-hover": "#F5F5F7",
         "hover-tint": "rgba(0, 0, 0, 0.04)",
@@ -59,6 +61,7 @@ st.markdown(f"""
         --accent-rgb: {palette['accent-rgb']};
         --accent-hover: {palette['accent-hover']};
         --accent-tint: {palette['accent-tint']};
+        --accent-text: {palette['accent-text']};
         --bg: {palette['bg']};
         --surface: {palette['surface']};
         --surface-hover: {palette['surface-hover']};
@@ -117,6 +120,7 @@ st.markdown("""
     h1 { font-weight: 600 !important; letter-spacing: -0.03em; color: var(--text) !important; }
     h2, h3 { font-weight: 600 !important; letter-spacing: -0.02em; color: var(--text) !important; }
     .stMarkdown p { color: var(--text-muted); }
+    .section-heading { font-size: 1.5rem; margin: 0.2rem 0 0.6rem; }
 
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 
@@ -202,7 +206,7 @@ st.markdown("""
         margin: 0;
     }
     [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] p {
-        color: var(--accent);
+        color: var(--accent-text);
         font-weight: 600;
     }
 
@@ -529,6 +533,11 @@ def page_header(title, subtitle):
     """, unsafe_allow_html=True)
 
 
+def section_heading(text):
+    # h2, not st.subheader's h3 — keeps h1 > h2 > h3 sequential for a11y
+    st.markdown(f'<h2 class="section-heading">{text}</h2>', unsafe_allow_html=True)
+
+
 def show_ai_loading(phrases, show_skeleton=True):
     """Render a themed AI-analysis loader and return its placeholder so the
     caller can clear it once the (blocking) AI call returns."""
@@ -622,7 +631,7 @@ if page == "Profile Setup":
     current_profile = db.get_profile() or {}
     
     with st.form("profile_form"):
-        st.subheader("Basic Information")
+        section_heading("Basic Information")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -652,7 +661,7 @@ if page == "Profile Setup":
             )
         
         st.markdown("---")
-        st.subheader("Technical Skills")
+        section_heading("Technical Skills")
         st.markdown("Enter your skills (comma-separated)")
         
         skills_input = st.text_area(
@@ -663,7 +672,7 @@ if page == "Profile Setup":
         )
         
         st.markdown("---")
-        st.subheader("Target Positions")
+        section_heading("Target Positions")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -749,7 +758,7 @@ elif page == "Discover Jobs":
     # Display recommendations if they exist
     if 'recommendations' in st.session_state:
         st.markdown("---")
-        st.subheader("Recommended Companies for You")
+        section_heading("Recommended Companies for You")
         
         # Parse recommendations
         rec_text = st.session_state.recommendations
@@ -993,7 +1002,7 @@ elif page == "My Applications":
     if len(apps) == 0:
         st.info("No applications yet")
     else:
-        st.subheader(f"Applications ({len(apps)})")
+        section_heading(f"Applications ({len(apps)})")
         
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -1053,7 +1062,7 @@ elif page == "Analytics":
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("Status Distribution")
+            section_heading("Status Distribution")
 
             status_df = pd.DataFrame({
                 "Status": ["Applied", "Interview", "Offer", "Rejected"],
@@ -1073,7 +1082,7 @@ elif page == "Analytics":
             st.altair_chart(chart, use_container_width=True)
         
         with col2:
-            st.subheader("Recent Activity")
+            section_heading("Recent Activity")
 
             status_color = {
                 "Applied": "var(--accent)",
