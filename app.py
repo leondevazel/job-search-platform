@@ -20,6 +20,7 @@ if st.session_state.dark_mode:
     palette = {
         "bg": "#000000",
         "accent": "#0A84FF",
+        "accent-rgb": "10, 132, 255",
         "accent-hover": "#409CFF",
         "accent-tint": "rgba(10, 132, 255, 0.16)",
         "surface": "#1C1C1E",
@@ -36,6 +37,7 @@ else:
     palette = {
         "bg": "#FFFFFF",
         "accent": "#0071E3",
+        "accent-rgb": "0, 113, 227",
         "accent-hover": "#0077ED",
         "accent-tint": "rgba(0, 113, 227, 0.08)",
         "surface": "#FFFFFF",
@@ -54,6 +56,7 @@ st.markdown(f"""
     <style>
     :root {{
         --accent: {palette['accent']};
+        --accent-rgb: {palette['accent-rgb']};
         --accent-hover: {palette['accent-hover']};
         --accent-tint: {palette['accent-tint']};
         --bg: {palette['bg']};
@@ -246,10 +249,106 @@ st.markdown("""
         background: var(--accent-hover);
         border-color: var(--accent-hover);
     }
+    /* Gentle attention pulse on the primary AI-recommendation CTA only */
+    .st-key-get_recs_btn .stButton>button[kind="primary"] {
+        animation: ctaPulse 2.6s ease-in-out infinite;
+    }
+    .st-key-get_recs_btn .stButton>button[kind="primary"]:hover { animation: none; }
+    @keyframes ctaPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.35); }
+        50% { box-shadow: 0 0 0 8px rgba(var(--accent-rgb), 0); }
+    }
 
     /* Spinner */
     .stSpinner > div { border-top-color: var(--accent) !important; }
     .stSpinner p { color: var(--text-muted) !important; }
+
+    /* ---- AI loading indicator ---- */
+    .ai-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem 0 1.25rem;
+        gap: 1.1rem;
+    }
+    .ai-orbit { position: relative; width: 64px; height: 64px; }
+    .ai-core {
+        position: absolute;
+        inset: 24px;
+        background: var(--accent);
+        clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+        animation: aiCorePulse 1.6s ease-in-out infinite;
+    }
+    @keyframes aiCorePulse {
+        0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.75; }
+        50% { transform: scale(1.05) rotate(45deg); opacity: 1; }
+    }
+    .ai-dot {
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 7px; height: 7px;
+        margin: -3.5px;
+        border-radius: 50%;
+        animation: aiOrbit 2.4s linear infinite;
+        animation-delay: var(--delay, 0s);
+    }
+    @keyframes aiOrbit {
+        from { transform: rotate(0deg) translateX(29px) rotate(0deg); }
+        to { transform: rotate(360deg) translateX(29px) rotate(-360deg); }
+    }
+    .ai-phrases { position: relative; height: 1.4em; min-width: 260px; text-align: center; }
+    .ai-phrase {
+        position: absolute; inset: 0;
+        color: var(--text-muted);
+        font-size: 0.92rem;
+        opacity: 0;
+        animation: aiPhraseCycle 6.4s ease-in-out infinite;
+        animation-delay: var(--d, 0s);
+    }
+    @keyframes aiPhraseCycle {
+        0% { opacity: 0; transform: translateY(5px); }
+        6%, 22% { opacity: 1; transform: translateY(0); }
+        28%, 100% { opacity: 0; transform: translateY(-5px); }
+    }
+    .ai-skeletons { width: 100%; max-width: 480px; margin-top: 0.5rem; }
+    .skel-card {
+        height: 62px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        background: linear-gradient(90deg, var(--surface-hover) 25%, var(--border) 37%, var(--surface-hover) 63%);
+        background-size: 400% 100%;
+        animation: skelShimmer 1.5s ease infinite;
+    }
+    @keyframes skelShimmer {
+        0% { background-position: 100% 0; }
+        100% { background-position: 0 0; }
+    }
+
+    /* ---- Success checkmark ---- */
+    .success-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--success) 12%, transparent);
+        border: 1px solid var(--border);
+        animation: fadeInUp 0.3s ease-out;
+        margin-bottom: 0.5rem;
+    }
+    .success-check span { color: var(--text); font-size: 0.92rem; }
+    .success-check .check-circle {
+        fill: none; stroke: var(--success); stroke-width: 2;
+        stroke-dasharray: 63; stroke-dashoffset: 63;
+        animation: checkDraw 0.4s ease-out forwards;
+    }
+    .success-check .check-mark {
+        fill: none; stroke: var(--success); stroke-width: 2.5;
+        stroke-linecap: round; stroke-linejoin: round;
+        stroke-dasharray: 20; stroke-dashoffset: 20;
+        animation: checkDraw 0.25s ease-out 0.35s forwards;
+    }
+    @keyframes checkDraw { to { stroke-dashoffset: 0; } }
 
     /* ---- Company card w/ score ring ---- */
     .company-card {
@@ -295,6 +394,11 @@ st.markdown("""
         animation-delay: calc(var(--i, 0) * 70ms + 200ms);
     }
     @keyframes ringFill { from { stroke-dashoffset: 150.8; } }
+    @property --num {
+        syntax: '<integer>';
+        inherits: false;
+        initial-value: 0;
+    }
     .score-ring-inner {
         position: absolute;
         inset: 6px;
@@ -305,7 +409,13 @@ st.markdown("""
         justify-content: center;
         font-size: 0.78rem;
         font-weight: 600;
+        --num: 0;
+        counter-reset: sn var(--num);
+        animation: scoreCountUp 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        animation-delay: calc(var(--i, 0) * 70ms + 200ms);
     }
+    .score-ring-inner::after { content: counter(sn) '%'; }
+    @keyframes scoreCountUp { to { --num: var(--target-score, 0); } }
 
     /* ---- Expanders ---- */
     [data-testid="stExpander"] {
@@ -415,6 +525,46 @@ def page_header(title, subtitle):
         <div class="page-header">
             <h1>{title}</h1>
             <p class="page-subtitle">{subtitle}</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+def show_ai_loading(phrases, show_skeleton=True):
+    """Render a themed AI-analysis loader and return its placeholder so the
+    caller can clear it once the (blocking) AI call returns."""
+    placeholder = st.empty()
+    phrase_html = "".join(
+        f'<span class="ai-phrase" style="--d:{i * 1.6}s">{p}</span>'
+        for i, p in enumerate(phrases)
+    )
+    skeleton_html = (
+        '<div class="ai-skeletons">'
+        + '<div class="skel-card"></div>' * 3
+        + '</div>'
+    ) if show_skeleton else ''
+    placeholder.markdown(f"""
+        <div class="ai-loading">
+            <div class="ai-orbit">
+                <div class="ai-core"></div>
+                <div class="ai-dot" style="--delay:0s; background:var(--accent);"></div>
+                <div class="ai-dot" style="--delay:-0.8s; background:var(--success);"></div>
+                <div class="ai-dot" style="--delay:-1.6s; background:var(--warning);"></div>
+            </div>
+            <div class="ai-phrases">{phrase_html}</div>
+            {skeleton_html}
+        </div>
+    """, unsafe_allow_html=True)
+    return placeholder
+
+
+def success_check(message):
+    st.markdown(f"""
+        <div class="success-check">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <circle cx="12" cy="12" r="10" class="check-circle" />
+                <path d="M7 12.5l3 3 7-7" class="check-mark" />
+            </svg>
+            <span>{message}</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -582,13 +732,19 @@ elif page == "Discover Jobs":
     # Get recommendations button
     col1, col2, col3 = st.columns([2, 1, 2])
     with col2:
-        get_recs = st.button("Get AI Recommendations", type="primary", use_container_width=True)
-    
+        get_recs = st.button("Get AI Recommendations", key="get_recs_btn", type="primary", use_container_width=True)
+
     if get_recs:
-        with st.spinner("AI is analyzing your profile and finding the best matches..."):
-            recommendations = ai.recommend_companies(profile)
-            st.session_state.recommendations = recommendations
-            st.session_state.show_count = 10
+        loading = show_ai_loading([
+            "Analyzing your profile…",
+            "Scanning open roles…",
+            "Matching your skills…",
+            "Ranking best fits…",
+        ])
+        recommendations = ai.recommend_companies(profile)
+        loading.empty()
+        st.session_state.recommendations = recommendations
+        st.session_state.show_count = 10
     
     # Display recommendations if they exist
     if 'recommendations' in st.session_state:
@@ -663,7 +819,7 @@ elif page == "Discover Jobs":
                             stroke-dashoffset="{ring_offset}"
                             style="--i:{stagger};" />
                     </svg>
-                    <div class="score-ring-inner" style="color:{tier_color};">{score_num}%</div>
+                    <div class="score-ring-inner" style="color:{tier_color}; --target-score:{score_num}; --i:{stagger};"></div>
                 </div>
                 <div class="company-card-info">
                     <h3>{company_info.get('name', 'Unknown')} &mdash; {company_info.get('position', 'N/A')}</h3>
@@ -694,7 +850,7 @@ elif page == "Discover Jobs":
                         'keywords': f"Match: {company_info.get('match')}"
                     }
                     db.add_application(new_app)
-                    st.success(f"Added {company_info.get('name')} to your applications")
+                    success_check(f"Added {company_info.get('name')} to your applications")
             
             # Detailed Analysis Section
             with st.expander("View Detailed Analysis"):
@@ -710,23 +866,27 @@ elif page == "Discover Jobs":
                 with col_a:
                     if st.button("Generate Analysis", type="primary", key=f"gen_{idx}", use_container_width=True):
                         if job_desc:
-                            with st.spinner("Analyzing..."):
-                                detailed_analysis = ai.analyze_company_fit(
-                                    profile, 
-                                    company_info.get('name'), 
-                                    job_desc
+                            loading = show_ai_loading(
+                                ["Reading the job description…", "Comparing against your profile…"],
+                                show_skeleton=False,
+                            )
+                            detailed_analysis = ai.analyze_company_fit(
+                                profile,
+                                company_info.get('name'),
+                                job_desc
+                            )
+                            st.session_state[f'analysis_{idx}'] = detailed_analysis
+
+                            gaps_text = company_info.get('gaps', '')
+                            if gaps_text and gaps_text != 'N/A':
+                                target_skills = [s.strip() for s in gaps_text.split(',')]
+                                roadmap = ai.generate_learning_roadmap(
+                                    profile.get('skills', []),
+                                    target_skills
                                 )
-                                st.session_state[f'analysis_{idx}'] = detailed_analysis
-                                
-                                gaps_text = company_info.get('gaps', '')
-                                if gaps_text and gaps_text != 'N/A':
-                                    target_skills = [s.strip() for s in gaps_text.split(',')]
-                                    roadmap = ai.generate_learning_roadmap(
-                                        profile.get('skills', []),
-                                        target_skills
-                                    )
-                                    st.session_state[f'roadmap_{idx}'] = roadmap
-                                st.rerun()
+                                st.session_state[f'roadmap_{idx}'] = roadmap
+                            loading.empty()
+                            st.rerun()
                         else:
                             st.warning("Please paste a job description")
                 
@@ -741,7 +901,7 @@ elif page == "Discover Jobs":
                             'keywords': f"Match: {company_info.get('match')}"
                         }
                         db.add_application(new_app)
-                        st.success("Added to applications")
+                        success_check("Added to applications")
                 
                 if f'analysis_{idx}' in st.session_state:
                     st.markdown("---")
@@ -810,9 +970,10 @@ elif page == "My Applications":
                 if company and position and job_desc:
                     keywords = None
                     if st.session_state.ai_available:
-                        with st.spinner("Analyzing..."):
-                            keywords = ai.extract_keywords(job_desc)
-                    
+                        loading = show_ai_loading(["Extracting keywords…"], show_skeleton=False)
+                        keywords = ai.extract_keywords(job_desc)
+                        loading.empty()
+
                     db.add_application({
                         'company': company,
                         'position': position,
@@ -821,7 +982,7 @@ elif page == "My Applications":
                         'status': status,
                         'keywords': keywords
                     })
-                    st.success(f"Added {company}")
+                    success_check(f"Added {company}")
                     st.rerun()
                 else:
                     st.error("Fill in required fields")
