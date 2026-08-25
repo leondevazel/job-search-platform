@@ -1,4 +1,6 @@
 import streamlit as st
+import altair as alt
+import pandas as pd
 from database import Database
 from ai_helper import AIHelper
 from datetime import datetime
@@ -11,48 +13,385 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+
+if st.session_state.dark_mode:
+    palette = {
+        "bg": "#000000",
+        "accent": "#0A84FF",
+        "accent-hover": "#409CFF",
+        "accent-tint": "rgba(10, 132, 255, 0.16)",
+        "surface": "#1C1C1E",
+        "surface-hover": "#2C2C2E",
+        "hover-tint": "rgba(255, 255, 255, 0.06)",
+        "border": "#38383A",
+        "text": "#F5F5F7",
+        "text-muted": "#98989D",
+        "success": "#32D74B",
+        "warning": "#FF9F0A",
+        "danger": "#FF453A",
+    }
+else:
+    palette = {
+        "bg": "#FFFFFF",
+        "accent": "#0071E3",
+        "accent-hover": "#0077ED",
+        "accent-tint": "rgba(0, 113, 227, 0.08)",
+        "surface": "#FFFFFF",
+        "surface-hover": "#F5F5F7",
+        "hover-tint": "rgba(0, 0, 0, 0.04)",
+        "border": "#D2D2D7",
+        "text": "#1D1D1F",
+        "text-muted": "#6E6E73",
+        "success": "#1D8A3D",
+        "warning": "#B3610A",
+        "danger": "#D70015",
+    }
+
 # Custom CSS
+st.markdown(f"""
+    <style>
+    :root {{
+        --accent: {palette['accent']};
+        --accent-hover: {palette['accent-hover']};
+        --accent-tint: {palette['accent-tint']};
+        --bg: {palette['bg']};
+        --surface: {palette['surface']};
+        --surface-hover: {palette['surface-hover']};
+        --hover-tint: {palette['hover-tint']};
+        --border: {palette['border']};
+        --text: {palette['text']};
+        --text-muted: {palette['text-muted']};
+        --success: {palette['success']};
+        --warning: {palette['warning']};
+        --danger: {palette['danger']};
+    }}
+
+    html, body, [class*="css"] {{
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text);
+    }}
+
+    body,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    [data-testid="stHeader"],
+    [data-testid="stBottomBlockContainer"] {{
+        background: var(--bg) !important;
+    }}
+
+    .main {{ padding: 2rem 3rem 4rem; }}
+    </style>
+""", unsafe_allow_html=True)
+
 st.markdown("""
     <style>
-    .main {
-        padding: 0rem 1rem;
+    /* ---- Motion ---- */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    .stButton>button {
-        width: 100%;
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.001ms !important;
+            animation-delay: 0ms !important;
+            transition-duration: 0.001ms !important;
+        }
+    }
+
+    /* Smooth light/dark theme swap instead of a hard cut */
+    body,
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stHeader"],
+    [data-testid="stSidebar"], [data-testid="stMetric"], [data-testid="stExpander"],
+    [data-testid="stExpanderDetails"], [data-testid="stAlertContainer"],
+    .stTextInput input, .stTextArea textarea, .stSelectbox input, .stSelectbox [role="group"],
+    .stButton>button, .company-card, .profile-chip, hr {
+        transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+    }
+
+    /* ---- Headings ---- */
+    h1 { font-weight: 600 !important; letter-spacing: -0.03em; color: var(--text) !important; }
+    h2, h3 { font-weight: 600 !important; letter-spacing: -0.02em; color: var(--text) !important; }
+    .stMarkdown p { color: var(--text-muted); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    /* ---- Page header ---- */
+    .page-header {
+        padding-top: 0.25rem;
+        margin-bottom: 0.5rem;
+        opacity: 0;
+        animation: fadeInUp 0.45s ease-out forwards;
+    }
+    .page-header h1 { font-size: 2.4rem; margin: 0; }
+    .page-header .page-subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        margin: 0.35rem 0 0;
+    }
+
+    /* ---- Sidebar ---- */
+    [data-testid="stSidebar"] {
+        background: var(--surface-hover);
+        border-right: 1px solid var(--border);
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0.25rem 0 1.1rem;
+    }
+    .brand-mark {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+    }
+    .brand-name {
+        font-weight: 600;
+        font-size: 1.05rem;
+        line-height: 1.15;
+        color: var(--text);
+    }
+    .brand-sub { font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.06em; }
+
+    .profile-chip {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    .profile-chip .label { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .profile-chip .value { color: var(--text); font-weight: 600; margin-top: 2px; }
+
+    .sidebar-footer {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        padding-top: 0.5rem;
+    }
+
+    /* Sidebar nav (radio -> pill list) */
+    [data-testid="stSidebar"] [data-testid="stRadioGroup"] { gap: 2px; }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"] {
+        padding: 8px 12px;
         border-radius: 8px;
-        height: 3em;
+        transition: background 0.15s ease, padding-left 0.15s ease;
+        cursor: pointer;
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"]:hover {
+        background: var(--hover-tint);
+        padding-left: 16px;
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] {
+        background: var(--accent-tint);
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"] > div > div > div:first-child {
+        display: none;
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"] p {
+        font-size: 0.92rem;
+        font-weight: 400;
+        color: var(--text);
+        margin: 0;
+    }
+    [data-testid="stSidebar"] label[data-testid="stRadioOption"][data-selected="true"] p {
+        color: var(--accent);
         font-weight: 600;
     }
+
+    /* ---- Metrics ---- */
+    [data-testid="stMetric"] {
+        background: transparent;
+        padding: 0;
+    }
+    [data-testid="stMetricLabel"] p {
+        color: var(--text-muted) !important;
+        font-size: 0.78rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    [data-testid="stMetricValue"] {
+        font-weight: 600 !important;
+        color: var(--text) !important;
+        font-size: 2rem !important;
+    }
+
+    /* ---- Buttons ---- */
+    .stButton>button {
+        width: 100%;
+        border-radius: 980px;
+        height: 2.7em;
+        font-weight: 400;
+        font-size: 0.95rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        transition: all 0.15s ease;
+    }
+    .stButton>button:hover {
+        border-color: var(--text-muted);
+        background: var(--surface-hover);
+    }
+    .stButton>button:active { transform: scale(0.97); }
+    .stButton>button[kind="primary"] {
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: #FFFFFF;
+    }
+    .stButton>button[kind="primary"]:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+    }
+
+    /* Spinner */
+    .stSpinner > div { border-top-color: var(--accent) !important; }
+    .stSpinner p { color: var(--text-muted) !important; }
+
+    /* ---- Company card w/ score ring ---- */
     .company-card {
-        padding: 15px 20px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 10px;
+        border: none;
+        border-bottom: 1px solid var(--border);
         border-radius: 10px;
-        border: 2px solid #3b82f6;
-        margin-bottom: 15px;
-        background: #1a1a1a;
-        display: inline-block;
-        width: auto;
-        max-width: fit-content;
+        background: transparent;
+        margin-bottom: 4px;
+        opacity: 0;
+        animation: fadeInUp 0.5s ease-out forwards;
+        animation-delay: calc(var(--i, 0) * 70ms + 60ms);
+        transition: background 0.2s ease;
     }
+    .company-card:hover { background: var(--surface-hover); }
     .company-card h3 {
-        color: #ffffff;
-        margin: 0;
-        white-space: nowrap;
+        color: var(--text);
+        margin: 0 0 2px;
+        font-size: 1.08rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
     }
-    .match-score-high {
-        color: #10b981;
-        font-weight: bold;
-        font-size: 1.2em;
+    .company-card .tier-label {
+        font-size: 0.78rem;
+        font-weight: 500;
     }
-    .match-score-medium {
-        color: #f59e0b;
-        font-weight: bold;
-        font-size: 1.2em;
+    .score-ring {
+        position: relative;
+        width: 54px;
+        height: 54px;
+        min-width: 54px;
     }
-    .match-score-low {
-        color: #ef4444;
-        font-weight: bold;
-        font-size: 1.2em;
+    .score-ring svg { transform: rotate(-90deg); overflow: visible; }
+    .ring-track { fill: none; stroke: var(--border); stroke-width: 4; }
+    .ring-progress {
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+        animation: ringFill 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        animation-delay: calc(var(--i, 0) * 70ms + 200ms);
     }
+    @keyframes ringFill { from { stroke-dashoffset: 150.8; } }
+    .score-ring-inner {
+        position: absolute;
+        inset: 6px;
+        border-radius: 50%;
+        background: var(--bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    /* ---- Expanders ---- */
+    [data-testid="stExpander"] {
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        background: var(--surface);
+    }
+    [data-testid="stExpander"] summary {
+        font-weight: 400;
+        background: var(--surface) !important;
+        color: var(--text) !important;
+    }
+    [data-testid="stExpander"] summary span[data-testid="stIconMaterial"] {
+        color: var(--text-muted) !important;
+    }
+    [data-testid="stExpanderDetails"] { background: var(--surface) !important; }
+
+    /* ---- Inputs ---- */
+    .stTextInput input, .stTextArea textarea, .stNumberInput input,
+    .stSelectbox input, .stSelectbox [role="group"] {
+        border-radius: 10px !important;
+        border-color: var(--border) !important;
+        background: var(--surface-hover) !important;
+        color: var(--text) !important;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px var(--accent-tint) !important;
+    }
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder {
+        color: var(--text-muted) !important;
+        opacity: 1;
+    }
+    .stSelectbox button { color: var(--text) !important; }
+
+    /* Selectbox dropdown popover (portalled to body) */
+    [role="listbox"] {
+        background: var(--surface-hover) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 10px !important;
+    }
+    [role="option"] { color: var(--text) !important; }
+    [role="option"][aria-selected="true"], [role="option"][data-focused="true"] {
+        background: var(--accent-tint) !important;
+    }
+
+    /* ---- Alerts ---- */
+    [data-testid="stAlertContainer"] {
+        border-radius: 10px !important;
+        border: 1px solid var(--border) !important;
+        background: var(--surface-hover) !important;
+    }
+    [data-testid="stAlertContainer"] p { color: var(--text) !important; }
+    [data-testid="stAlertContentError"] { border-left: 3px solid var(--danger); }
+    [data-testid="stAlertContentWarning"] { border-left: 3px solid var(--warning); }
+    [data-testid="stAlertContentSuccess"] { border-left: 3px solid var(--success); }
+    [data-testid="stAlertContentInfo"] { border-left: 3px solid var(--accent); }
+
+    /* ---- Timeline (Recent Activity) ---- */
+    .timeline { position: relative; padding-left: 18px; margin-top: 4px; }
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+        opacity: 0;
+        animation: fadeInUp 0.45s ease-out forwards;
+        animation-delay: calc(var(--i, 0) * 80ms + 100ms);
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -18px; top: 4px;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: var(--dot-color, var(--accent));
+    }
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: -14px; top: 14px; bottom: -6px;
+        width: 1px;
+        background: var(--border);
+    }
+    .timeline-item:last-child::after { display: none; }
+    .timeline-item .t-title { font-weight: 500; color: var(--text); font-size: 0.94rem; }
+    .timeline-item .t-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -70,36 +409,65 @@ if 'ai' not in st.session_state:
 db = st.session_state.db
 ai = st.session_state.ai if st.session_state.ai_available else None
 
+
+def page_header(title, subtitle):
+    st.markdown(f"""
+        <div class="page-header">
+            <h1>{title}</h1>
+            <p class="page-subtitle">{subtitle}</p>
+        </div>
+    """, unsafe_allow_html=True)
+
 # Sidebar
 with st.sidebar:
-    st.title("AI Job Platform")
-    
+    st.markdown("""
+        <div class="brand">
+            <span class="brand-mark"></span>
+            <div>
+                <div class="brand-name">Job Platform</div>
+                <div class="brand-sub">CAREER INTELLIGENCE</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
     profile = db.get_profile()
     if profile:
-        st.success(f"Profile: {profile.get('name', 'User')}")
+        st.markdown(f"""
+            <div class="profile-chip">
+                <div class="label">Signed in as</div>
+                <div class="value">{profile.get('name', 'User')}</div>
+            </div>
+        """, unsafe_allow_html=True)
     else:
-        st.warning("Complete your profile first")
-    
+        st.markdown("""
+            <div class="profile-chip">
+                <div class="label">Setup required</div>
+                <div class="value">Complete your profile</div>
+            </div>
+        """, unsafe_allow_html=True)
+
     st.markdown("---")
-    
+
     page = st.radio(
         "Navigation",
         ["Profile Setup", "Discover Jobs", "My Applications", "Analytics"],
         label_visibility="collapsed"
     )
-    
+
     st.markdown("---")
     stats = db.get_statistics()
-    st.metric("Total Applications", stats['total'])
-    st.metric("Active Interviews", stats['interview'])
-    
+    col1, col2 = st.columns(2)
+    col1.metric("Applications", stats['total'])
+    col2.metric("Interviews", stats['interview'])
+
     st.markdown("---")
-    st.markdown("Built by Sunghoon Lee")
+    st.toggle("Dark Mode", key="dark_mode")
+
+    st.markdown('<div class="sidebar-footer">Built by Sunghoon Lee</div>', unsafe_allow_html=True)
 
 # ===== PROFILE SETUP PAGE =====
 if page == "Profile Setup":
-    st.title("Profile Setup")
-    st.markdown("Set up your profile to get personalized job recommendations")
+    page_header("Profile Setup", "Set up your profile to get personalized job recommendations")
     
     current_profile = db.get_profile() or {}
     
@@ -183,8 +551,7 @@ if page == "Profile Setup":
 
 # ===== DISCOVER JOBS PAGE =====
 elif page == "Discover Jobs":
-    st.title("Discover Jobs")
-    st.markdown("AI-powered job recommendations tailored to your profile")
+    page_header("Discover Jobs", "AI-powered job recommendations tailored to your profile")
     
     profile = db.get_profile()
     
@@ -270,26 +637,44 @@ elif page == "Discover Jobs":
             
             try:
                 score_num = int(company_info.get('score', '0%').replace('%', ''))
-                if score_num >= 80:
-                    score_class = "match-score-high"
-                elif score_num >= 60:
-                    score_class = "match-score-medium"
-                else:
-                    score_class = "match-score-low"
             except:
-                score_class = "match-score-medium"
-            
-            # Company name card - inline block with auto width
+                score_num = 0
+
+            if score_num >= 80:
+                tier_color, tier_label = "var(--success)", "Strong fit"
+            elif score_num >= 60:
+                tier_color, tier_label = "var(--warning)", "Good fit"
+            else:
+                tier_color, tier_label = "var(--danger)", "Possible fit"
+
+            ring_circumference = 150.8
+            ring_offset = ring_circumference * (1 - max(0, min(score_num, 100)) / 100)
+            stagger = min(idx, 8)
+
+            # Company header card with an animated circular score ring
             st.markdown(f"""
-            <div class="company-card">
-                <h3>{company_info.get('name', 'Unknown')} - {company_info.get('position', 'N/A')}</h3>
+            <div class="company-card" style="--i:{stagger};">
+                <div class="score-ring">
+                    <svg viewBox="0 0 56 56" width="54" height="54">
+                        <circle class="ring-track" cx="28" cy="28" r="24" />
+                        <circle class="ring-progress" cx="28" cy="28" r="24"
+                            stroke="{tier_color}"
+                            stroke-dasharray="{ring_circumference}"
+                            stroke-dashoffset="{ring_offset}"
+                            style="--i:{stagger};" />
+                    </svg>
+                    <div class="score-ring-inner" style="color:{tier_color};">{score_num}%</div>
+                </div>
+                <div class="company-card-info">
+                    <h3>{company_info.get('name', 'Unknown')} &mdash; {company_info.get('position', 'N/A')}</h3>
+                    <span class="tier-label" style="color:{tier_color};">{tier_label}</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
-            
+
             col1, col2 = st.columns([3, 1])
-            
+
             with col1:
-                st.markdown(f"**Match Score:** <span class='{score_class}'>{company_info.get('score', 'N/A')}</span>", unsafe_allow_html=True)
                 st.write(f"**Why Good Match:** {company_info.get('match', 'N/A')}")
                 
                 with st.expander("View Details"):
@@ -310,7 +695,6 @@ elif page == "Discover Jobs":
                     }
                     db.add_application(new_app)
                     st.success(f"Added {company_info.get('name')} to your applications")
-                    st.balloons()
             
             # Detailed Analysis Section
             with st.expander("View Detailed Analysis"):
@@ -385,8 +769,7 @@ elif page == "Discover Jobs":
 
 # ===== MY APPLICATIONS PAGE =====
 elif page == "My Applications":
-    st.title("My Applications")
-    st.markdown("Track and manage your job applications")
+    page_header("My Applications", "Track and manage your job applications")
     
     apps = db.get_all_applications()
     stats = db.get_statistics()
@@ -498,8 +881,7 @@ elif page == "My Applications":
 
 # ===== ANALYTICS PAGE =====
 elif page == "Analytics":
-    st.title("Analytics")
-    st.markdown("Job search insights")
+    page_header("Analytics", "Job search insights")
     
     apps = db.get_all_applications()
     stats = db.get_statistics()
@@ -511,16 +893,39 @@ elif page == "Analytics":
         
         with col1:
             st.subheader("Status Distribution")
-            st.bar_chart({
-                "Applied": stats['applied'],
-                "Interview": stats['interview'],
-                "Offer": stats['offer'],
-                "Rejected": stats['rejected']
+
+            status_df = pd.DataFrame({
+                "Status": ["Applied", "Interview", "Offer", "Rejected"],
+                "Count": [stats['applied'], stats['interview'], stats['offer'], stats['rejected']],
             })
+            axis = alt.Axis(
+                labelColor=palette["text-muted"],
+                titleColor=palette["text-muted"],
+                domainColor=palette["border"],
+                tickColor=palette["border"],
+                gridColor=palette["border"],
+            )
+            chart = alt.Chart(status_df).mark_bar(color=palette["accent"], size=40).encode(
+                x=alt.X("Status", sort=None, title=None, axis=axis),
+                y=alt.Y("Count", title=None, axis=axis),
+            ).properties(background=palette["bg"])
+            st.altair_chart(chart, use_container_width=True)
         
         with col2:
             st.subheader("Recent Activity")
-            for app in apps[:5]:
-                st.write(f"**{app['company']}** - {app['position']}")
-                st.caption(f"{app['status']} on {app['date_applied']}")
-                st.markdown("---")
+
+            status_color = {
+                "Applied": "var(--accent)",
+                "Interview": "var(--warning)",
+                "Offer": "var(--success)",
+                "Rejected": "var(--danger)",
+            }
+
+            items = "".join(f"""
+                <div class="timeline-item" style="--dot-color: {status_color.get(app.get('status'), 'var(--accent)')}; --i:{i};">
+                    <div class="t-title">{app['company']} &mdash; {app['position']}</div>
+                    <div class="t-meta">{app['status']} on {app['date_applied']}</div>
+                </div>
+            """ for i, app in enumerate(apps[:5]))
+
+            st.markdown(f'<div class="timeline">{items}</div>', unsafe_allow_html=True)

@@ -1,4 +1,6 @@
 streamlit
+altair
+pandas
 pymongo
 anthropic
 python-dotenv
