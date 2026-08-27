@@ -139,19 +139,29 @@ class AIHelper:
             return f"Error analyzing match: {str(e)}"
     
     def recommend_companies(self, profile):
-        """Recommend companies based on user profile"""
+        """Recommend companies based on user profile, grounded with live web search
+        so posting status and culture notes reflect what was actually found online
+        rather than the model's memorized guesses."""
         try:
             skills = ", ".join(profile.get('skills', []))
             education = profile.get('education', '')
             experience = profile.get('experience', '')
             target_location = profile.get('target_location', '')
-            
+
             message = self.client.messages.create(
-                model="claude-sonnet-4-5-20250929",
-                max_tokens=3000,
+                model="claude-sonnet-5",
+                max_tokens=12000,
+                tools=[{
+                    "type": "web_search_20260209",
+                    "name": "web_search",
+                    "max_uses": 15,
+                }],
                 messages=[{
                     "role": "user",
-                    "content": f"""Based on this profile, recommend 10 companies that would be a good match.
+                    "content": f"""Based on this profile, recommend 20 companies that would be a good match.
+Use web search to check each company's careers page or recent postings for a role
+matching this profile, and to look up what the company says about its culture,
+values, or ideal-candidate profile ("인재상" if Korean).
 
 Profile:
 - Education: {education}
@@ -166,6 +176,13 @@ For each company, provide:
 4. Why it's a good match
 5. Requirements
 6. What's missing from profile
+7. Whether you found a real, current job posting or open careers listing for a
+   matching role during your search
+8. A short note on the company's stated culture/values, based only on what you
+   found in search results
+
+Be honest about verification: if you could not find a live posting or clear culture
+information via search, say so explicitly instead of guessing or assuming one exists.
 
 Format each company as:
 ---
@@ -175,13 +192,16 @@ Format each company as:
 **Why Good Match:** [reason]
 **Requirements:** [requirements]
 **Gaps:** [gaps]
+**Posting Status:** [Found: <url> | Not confirmed]
+**Culture Notes:** [notes based on search, or "Not confirmed via search"]
 ---
 
 Focus on both Korean companies (Samsung, SK Hynix, Naver, Kakao, etc.) and global companies based on location preference.
 """
                 }]
             )
-            return message.content[0].text
+            text_parts = [block.text for block in message.content if block.type == "text"]
+            return "\n".join(text_parts) if text_parts else "No recommendations generated."
         except Exception as e:
             return f"Error generating recommendations: {str(e)}"
     
@@ -273,6 +293,50 @@ Format as:
             return message.content[0].text
         except Exception as e:
             return f"Error generating roadmap: {str(e)}"
+
+    def strengthen_resume_for_company(self, resume, company_name, culture_notes=""):
+        """Suggest resume wording that genuinely reflects a specific company's stated
+        culture/values, grounded with live web search. Never invents new experience —
+        only reorders or rewords what is already in the resume."""
+        try:
+            culture_hint = (
+                f"\n\nNotes already gathered about this company's culture: {culture_notes}"
+                if culture_notes and "Not confirmed" not in culture_notes else ""
+            )
+            message = self.client.messages.create(
+                model="claude-sonnet-5",
+                max_tokens=4000,
+                tools=[{
+                    "type": "web_search_20260209",
+                    "name": "web_search",
+                    "max_uses": 5,
+                }],
+                messages=[{
+                    "role": "user",
+                    "content": f"""Search for {company_name}'s stated company values, culture,
+or ideal-candidate profile ("인재상" if Korean), then suggest how to reword or
+reprioritize this resume so it genuinely reflects that alignment.
+
+Resume:
+{resume}
+{culture_hint}
+
+Provide:
+**Company Values Found:** [what you found via search, or "Not confirmed via search" if nothing reliable turned up]
+**Suggested Resume Adjustments:**
+- [specific wording or reordering suggestion tied to an existing resume bullet]
+- [specific wording or reordering suggestion tied to an existing resume bullet]
+- [specific wording or reordering suggestion tied to an existing resume bullet]
+
+Only suggest rewording or reprioritizing what is already true in the resume above.
+Do not suggest adding experience, skills, or metrics that are not already there.
+"""
+                }]
+            )
+            text_parts = [block.text for block in message.content if block.type == "text"]
+            return "\n".join(text_parts) if text_parts else "No suggestions generated."
+        except Exception as e:
+            return f"Error generating resume alignment suggestions: {str(e)}"
 
     def generate_portfolio_content(self, project):
         """Turn raw project notes into a polished portfolio write-up"""

@@ -1,4 +1,5 @@
 import os
+import re
 import streamlit as st
 import streamlit_authenticator as stauth
 import altair as alt
@@ -384,6 +385,17 @@ st.markdown("""
         font-size: 0.78rem;
         font-weight: 500;
     }
+    .posting-badge {
+        display: inline-block;
+        margin-left: 0.5rem;
+        padding: 0.1rem 0.55rem;
+        border-radius: 980px;
+        font-size: 0.72rem;
+        font-weight: 500;
+        vertical-align: middle;
+    }
+    .posting-badge.found { background: var(--accent-tint); color: var(--accent-text); }
+    .posting-badge.unconfirmed { background: var(--hover-tint); color: var(--text-muted); }
     .score-ring {
         position: relative;
         width: 54px;
@@ -581,20 +593,42 @@ def success_check(message):
 
 
 def render_landing_page():
-    """Dark hero splash shown once before the login screen."""
-    st.markdown("""
+    """Dark hero splash shown once before the login screen. Rather than a
+    generic centered hero, this mirrors the app's own Discover Jobs card
+    (score ring + tier label) as the hero visual, so the splash looks like
+    a shot of the actual product instead of stock hero-section furniture."""
+    ring_c = 150.8
+    score = 94
+    offset = ring_c * (1 - score / 100)
+
+    st.markdown(f"""
         <style>
-        [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
+        [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {{
             max-width: 100%;
-        }
-        .landing-hero {
+        }}
+        .landing-hero {{
+            --surface: #14161c;
+            --surface-hover: #1b1e26;
+            --border: rgba(255,255,255,0.12);
+            --text: #F5F6FA;
+            --text-muted: #9AA3B8;
+            --success: #3DDC84;
+            --accent-tint: rgba(110,168,255,0.16);
+            --accent-text: #8FC1FF;
+            --hover-tint: rgba(255,255,255,0.06);
             margin: 1rem -1rem 0;
-            padding: 4.5rem 1.5rem 6rem;
-            background: radial-gradient(circle at 20% -10%, #1c2b4a 0%, #050505 55%), #000000;
+            padding: 4rem 3rem;
+            background: radial-gradient(circle at 15% 20%, #1c2b4a 0%, #050505 60%), #000000;
             border-radius: 28px;
-            text-align: center;
-        }
-        .landing-badge {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 2rem;
+            align-items: center;
+        }}
+        @media (max-width: 900px) {{
+            .landing-hero {{ grid-template-columns: 1fr; padding: 3rem 1.75rem; }}
+        }}
+        .landing-badge {{
             display: inline-block;
             padding: 0.35rem 0.9rem;
             border-radius: 980px;
@@ -605,100 +639,141 @@ def render_landing_page():
             letter-spacing: 0.02em;
             opacity: 0;
             animation: fadeInUp 0.5s ease-out forwards;
-        }
-        .landing-title {
+        }}
+        .landing-title {{
             color: #F5F6FA;
-            font-size: 3.2rem;
+            font-size: 2.9rem;
             font-weight: 700;
             letter-spacing: -0.03em;
-            line-height: 1.15;
-            margin: 1.3rem auto 1.1rem;
-            max-width: 780px;
+            line-height: 1.14;
+            margin: 1.2rem 0 1.1rem;
             opacity: 0;
             animation: fadeInUp 0.55s ease-out 0.08s forwards;
-        }
-        .landing-title .gradient-text {
+        }}
+        .landing-title .gradient-text {{
             background: linear-gradient(90deg, #6EA8FF 0%, #B98CFF 50%, #FF9BD2 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-        }
-        .landing-sub {
+        }}
+        .landing-sub {{
             color: #9AA3B8;
-            font-size: 1.15rem;
-            max-width: 560px;
-            margin: 0 auto 2.4rem;
+            font-size: 1.08rem;
+            max-width: 480px;
+            margin: 0 0 2rem;
             line-height: 1.6;
             opacity: 0;
             animation: fadeInUp 0.55s ease-out 0.16s forwards;
-        }
-        .landing-features {
+        }}
+        .landing-tags {{
             display: flex;
-            gap: 1rem;
-            justify-content: center;
+            gap: 0.5rem;
             flex-wrap: wrap;
-            max-width: 900px;
-            margin: 0 auto 2.6rem;
-        }
-        .landing-feature {
-            flex: 1 1 220px;
-            max-width: 260px;
-            background: rgba(255,255,255,0.045);
-            border: 1px solid rgba(255,255,255,0.09);
+            margin-top: 1.6rem;
+            opacity: 0;
+            animation: fadeInUp 0.5s ease-out 0.3s forwards;
+        }}
+        .landing-tags span {{
+            font-size: 0.78rem;
+            color: #8891A5;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 980px;
+            padding: 0.25rem 0.7rem;
+        }}
+        .landing-mockup {{
+            position: relative;
+            height: 300px;
+        }}
+        .landing-mockup .company-card {{
+            position: absolute;
+            width: 280px;
+            margin: 0;
+            background: rgba(255,255,255,0.055);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             border-radius: 16px;
-            padding: 1.4rem 1.2rem;
-            text-align: left;
+            padding: 16px 18px;
+            backdrop-filter: blur(8px);
+        }}
+        .landing-mockup .company-card.back {{
+            top: 4px;
+            right: 4px;
+            transform: rotate(5deg);
+            opacity: 0.5;
+            filter: blur(0.3px);
+        }}
+        .landing-mockup .company-card.front {{
+            top: 78px;
+            right: 46px;
+            transform: rotate(-4deg);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+            animation-delay: 0.4s;
+        }}
+        .st-key-landing_cta {{
+            margin-top: -3.6rem;
+            max-width: 220px;
             opacity: 0;
-            animation: fadeInUp 0.5s ease-out forwards;
-            animation-delay: calc(var(--i, 0) * 90ms + 260ms);
-        }
-        .landing-feature .lf-icon { font-size: 1.4rem; margin-bottom: 0.6rem; }
-        .landing-feature .lf-title { color: #F0F1F5; font-weight: 600; font-size: 0.98rem; margin-bottom: 0.3rem; }
-        .landing-feature .lf-desc { color: #8891A5; font-size: 0.85rem; line-height: 1.5; }
-        .st-key-landing_cta {
-            margin-top: -4.2rem;
-            opacity: 0;
-            animation: fadeInUp 0.5s ease-out 0.5s forwards;
-        }
-        .st-key-landing_cta .stButton>button {
+            animation: fadeInUp 0.5s ease-out 0.45s forwards;
+        }}
+        .st-key-landing_cta .stButton>button {{
             background: #FFFFFF;
             color: #0A0A0A;
             border: none;
             font-weight: 600;
             height: 3em;
             box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-        }
-        .st-key-landing_cta .stButton>button:hover {
+        }}
+        .st-key-landing_cta .stButton>button:hover {{
             background: #E4E4E4;
-        }
+        }}
         </style>
         <div class="landing-hero">
-            <div class="landing-badge">AI-Powered Career Platform</div>
-            <div class="landing-title">Land your <span class="gradient-text">next role</span><br/>faster, with AI on your side.</div>
-            <div class="landing-sub">Track every application, get AI-matched company recommendations,
-                generate tailored cover letters, and turn your projects into a polished portfolio — all in one place.</div>
-            <div class="landing-features">
-                <div class="landing-feature" style="--i:0">
-                    <div class="lf-icon">🎯</div>
-                    <div class="lf-title">AI Job Matching</div>
-                    <div class="lf-desc">Personalized company and role recommendations based on your profile.</div>
+            <div>
+                <div class="landing-badge">AI-Powered Career Platform</div>
+                <div class="landing-title">Land your <span class="gradient-text">next role</span><br/>faster, with AI on your side.</div>
+                <div class="landing-sub">AI-matched companies with real posting checks, tailored cover letters,
+                    and a portfolio builder — everything you need to go from profile to offer.</div>
+                <div class="landing-tags">
+                    <span>🎯 AI Job Matching</span>
+                    <span>✍️ Cover Letters</span>
+                    <span>📁 Portfolio Builder</span>
                 </div>
-                <div class="landing-feature" style="--i:1">
-                    <div class="lf-icon">✍️</div>
-                    <div class="lf-title">Cover Letters</div>
-                    <div class="lf-desc">Auto-generated, tailored cover letters for every application.</div>
+            </div>
+            <div class="landing-mockup">
+                <div class="company-card back">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 56 56" width="54" height="54">
+                            <circle class="ring-track" cx="28" cy="28" r="24" />
+                            <circle class="ring-progress" cx="28" cy="28" r="24" stroke="var(--text-muted)"
+                                stroke-dasharray="{ring_c}" stroke-dashoffset="{ring_c * 0.4}" />
+                        </svg>
+                    </div>
+                    <div class="company-card-info">
+                        <h3>Naver &mdash; Backend Engineer</h3>
+                        <span class="tier-label">Good fit</span>
+                    </div>
                 </div>
-                <div class="landing-feature" style="--i:2">
-                    <div class="lf-icon">📁</div>
-                    <div class="lf-title">Portfolio Builder</div>
-                    <div class="lf-desc">Turn raw project notes into recruiter-ready portfolio entries.</div>
+                <div class="company-card front">
+                    <div class="score-ring">
+                        <svg viewBox="0 0 56 56" width="54" height="54">
+                            <circle class="ring-track" cx="28" cy="28" r="24" />
+                            <circle class="ring-progress" cx="28" cy="28" r="24" stroke="var(--success)"
+                                stroke-dasharray="{ring_c}" stroke-dashoffset="{offset}" />
+                        </svg>
+                        <div class="score-ring-inner" style="color:var(--success); --target-score:{score};"></div>
+                    </div>
+                    <div class="company-card-info">
+                        <h3>SK Hynix &mdash; ML Engineer</h3>
+                        <span class="tier-label" style="color:var(--success);">Strong fit</span>
+                        <span class="posting-badge found" style="margin-left:0;">🔗 Posting found</span>
+                    </div>
                 </div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
+    col1, col2 = st.columns([1, 2])
+    with col1:
         if st.button("Get Started", key="landing_cta", type="primary", use_container_width=True):
             st.session_state.show_landing = False
             st.rerun()
@@ -962,7 +1037,11 @@ elif page == "Discover Jobs":
                     company_info['requirements'] = line.replace('**Requirements:**', '').strip()
                 elif line.startswith('**Gaps:**'):
                     company_info['gaps'] = line.replace('**Gaps:**', '').strip()
-            
+                elif line.startswith('**Posting Status:**'):
+                    company_info['posting_status'] = line.replace('**Posting Status:**', '').strip()
+                elif line.startswith('**Culture Notes:**'):
+                    company_info['culture_notes'] = line.replace('**Culture Notes:**', '').strip()
+
             if company_info.get('name'):
                 all_companies.append(company_info)
         
@@ -991,6 +1070,13 @@ elif page == "Discover Jobs":
             ring_offset = ring_circumference * (1 - max(0, min(score_num, 100)) / 100)
             stagger = min(idx, 8)
 
+            posting_status = company_info.get('posting_status', '')
+            posting_match = re.match(r'Found:\s*(\S+)', posting_status)
+            if posting_match:
+                posting_badge = f'<a href="{posting_match.group(1)}" target="_blank" class="posting-badge found">🔗 Posting found</a>'
+            else:
+                posting_badge = '<span class="posting-badge unconfirmed">Posting not confirmed</span>'
+
             # Company header card with an animated circular score ring
             st.markdown(f"""
             <div class="company-card" style="--i:{stagger};">
@@ -1007,7 +1093,7 @@ elif page == "Discover Jobs":
                 </div>
                 <div class="company-card-info">
                     <h3>{company_info.get('name', 'Unknown')} &mdash; {company_info.get('position', 'N/A')}</h3>
-                    <span class="tier-label" style="color:{tier_color};">{tier_label}</span>
+                    <span class="tier-label" style="color:{tier_color};">{tier_label}</span>{posting_badge}
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -1016,9 +1102,10 @@ elif page == "Discover Jobs":
 
             with col1:
                 st.write(f"**Why Good Match:** {company_info.get('match', 'N/A')}")
-                
+
                 with st.expander("View Details"):
                     st.write(f"**Requirements:** {company_info.get('requirements', 'N/A')}")
+                    st.write(f"**Culture Notes:** {company_info.get('culture_notes', 'Not confirmed via search')}")
                     st.write(f"**Gaps:** {company_info.get('gaps', 'N/A')}")
             
             with col2:
@@ -1096,7 +1183,31 @@ elif page == "Discover Jobs":
                     st.markdown("---")
                     st.markdown("#### Learning Roadmap")
                     st.markdown(st.session_state[f'roadmap_{idx}'])
-            
+
+                if st.session_state.ai_available:
+                    st.markdown("---")
+                    if st.button("Strengthen Resume for This Company's Culture", key=f"strengthen_{idx}", use_container_width=True):
+                        if profile.get('resume'):
+                            loading = show_ai_loading(
+                                ["Looking up company values…", "Aligning your resume…"],
+                                show_skeleton=False,
+                            )
+                            alignment = ai.strengthen_resume_for_company(
+                                profile.get('resume', ''),
+                                company_info.get('name', ''),
+                                company_info.get('culture_notes', '')
+                            )
+                            st.session_state[f'resume_align_{idx}'] = alignment
+                            loading.empty()
+                            st.rerun()
+                        else:
+                            st.warning("Add a resume in Profile Setup first")
+
+                if f'resume_align_{idx}' in st.session_state:
+                    st.markdown("---")
+                    st.markdown("#### Resume Alignment Suggestions")
+                    st.markdown(st.session_state[f'resume_align_{idx}'])
+
             st.markdown("---")
         
         # Load More button
