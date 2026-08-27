@@ -609,7 +609,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigation",
-        ["Profile Setup", "Discover Jobs", "My Applications", "Analytics"],
+        ["Profile Setup", "Discover Jobs", "My Applications", "Portfolio", "Analytics"],
         label_visibility="collapsed"
     )
 
@@ -690,9 +690,21 @@ if page == "Profile Setup":
                 placeholder="Samsung, SK Hynix, Google, Naver",
                 height=100
             )
-        
+
+        st.markdown("---")
+        section_heading("Resume")
+        st.markdown("Paste your resume text — used to generate cover letters and tailored suggestions")
+
+        resume_text = st.text_area(
+            "Resume",
+            value=current_profile.get('resume', ''),
+            placeholder="Paste your resume as plain text...",
+            height=200,
+            label_visibility="collapsed"
+        )
+
         submitted = st.form_submit_button("Save Profile", type="primary")
-        
+
         if submitted:
             profile_data = {
                 'name': name,
@@ -701,7 +713,8 @@ if page == "Profile Setup":
                 'target_location': target_location,
                 'skills': [s.strip() for s in skills_input.split(',') if s.strip()],
                 'target_roles': [r.strip() for r in target_roles.split(',') if r.strip()],
-                'target_companies': [c.strip() for c in target_companies.split(',') if c.strip()]
+                'target_companies': [c.strip() for c in target_companies.split(',') if c.strip()],
+                'resume': resume_text
             }
             
             db.save_profile(profile_data)
@@ -939,9 +952,10 @@ elif page == "Discover Jobs":
 # ===== MY APPLICATIONS PAGE =====
 elif page == "My Applications":
     page_header("My Applications", "Track and manage your job applications")
-    
+
     apps = db.get_all_applications()
     stats = db.get_statistics()
+    profile = db.get_profile()
     
     # Stats
     col1, col2, col3, col4 = st.columns(4)
@@ -1048,6 +1062,142 @@ elif page == "My Applications":
                         db.delete_application(app['id'])
                         st.success("Deleted")
                         st.rerun()
+
+                if st.session_state.ai_available:
+                    st.markdown("---")
+                    st.markdown("**AI Writing Tools**")
+                    col_a, col_b = st.columns(2)
+
+                    with col_a:
+                        if st.button("Generate Cover Letter", key=f"cover_{app['id']}", use_container_width=True):
+                            if not (profile and profile.get('resume')):
+                                st.warning("Add your resume in Profile Setup first")
+                            elif not app.get('job_description'):
+                                st.warning("This application has no job description saved")
+                            else:
+                                loading = show_ai_loading(
+                                    ["Reading the job description…", "Drafting your cover letter…"],
+                                    show_skeleton=False,
+                                )
+                                letter = ai.generate_cover_letter(
+                                    app.get('company', ''),
+                                    app.get('position', ''),
+                                    app.get('job_description', ''),
+                                    profile.get('resume', '')
+                                )
+                                loading.empty()
+                                st.session_state[f'cover_letter_{app["id"]}'] = letter
+
+                    with col_b:
+                        if st.button("Improve My Resume", key=f"resumetips_{app['id']}", use_container_width=True):
+                            if not (profile and profile.get('resume')):
+                                st.warning("Add your resume in Profile Setup first")
+                            elif not app.get('job_description'):
+                                st.warning("This application has no job description saved")
+                            else:
+                                loading = show_ai_loading(
+                                    ["Comparing your resume to this role…"],
+                                    show_skeleton=False,
+                                )
+                                tips = ai.customize_resume(profile.get('resume', ''), app.get('job_description', ''))
+                                loading.empty()
+                                st.session_state[f'resume_tips_{app["id"]}'] = tips
+
+                    if f'cover_letter_{app["id"]}' in st.session_state:
+                        st.markdown("#### Cover Letter")
+                        st.markdown(st.session_state[f'cover_letter_{app["id"]}'])
+
+                    if f'resume_tips_{app["id"]}' in st.session_state:
+                        st.markdown("#### Resume Suggestions")
+                        st.markdown(st.session_state[f'resume_tips_{app["id"]}'])
+
+# ===== PORTFOLIO PAGE =====
+elif page == "Portfolio":
+    page_header("Portfolio", "Turn your projects into polished, AI-written portfolio entries")
+
+    projects = db.get_portfolio_projects()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Projects", len(projects))
+    col2.metric("Written", len([p for p in projects if p.get('generated')]))
+    col3.metric("Drafts", len([p for p in projects if not p.get('generated')]))
+
+    st.markdown("---")
+
+    with st.expander("Add New Project"):
+        with st.form("new_project"):
+            title = st.text_input("Project Title", placeholder="AI Job Search Platform")
+            col1, col2 = st.columns(2)
+            with col1:
+                role = st.text_input("Your Role", placeholder="Full-stack developer")
+            with col2:
+                tech_stack = st.text_input("Tech Stack", placeholder="Python, Streamlit, Claude API, MongoDB")
+
+            description = st.text_area(
+                "What did you build and why? (raw notes are fine)",
+                height=150,
+                placeholder="Built a job search platform that uses Claude API to..."
+            )
+            outcome = st.text_area(
+                "Outcome / Impact (optional)",
+                height=80,
+                placeholder="Deployed and used daily; improved Lighthouse accessibility score from 88 to 94"
+            )
+
+            submit_project = st.form_submit_button("Add Project", type="primary", use_container_width=True)
+
+            if submit_project:
+                if title and description:
+                    db.add_portfolio_project({
+                        'title': title,
+                        'role': role,
+                        'tech_stack': tech_stack,
+                        'description': description,
+                        'outcome': outcome,
+                    })
+                    success_check(f"Added {title}")
+                    st.rerun()
+                else:
+                    st.error("Title and description are required")
+
+    st.markdown("---")
+
+    if len(projects) == 0:
+        st.info("No projects yet — add one above")
+    else:
+        section_heading(f"Projects ({len(projects)})")
+
+        for project in projects:
+            with st.expander(project.get('title', 'Untitled Project')):
+                st.write(f"**Role:** {project.get('role') or 'N/A'}")
+                st.write(f"**Tech Stack:** {project.get('tech_stack') or 'N/A'}")
+                st.write(f"**Notes:** {project.get('description', 'N/A')}")
+                if project.get('outcome'):
+                    st.write(f"**Outcome:** {project.get('outcome')}")
+
+                col_a, col_b = st.columns([1, 1])
+
+                with col_a:
+                    if not st.session_state.ai_available:
+                        st.caption("AI features unavailable. Check API configuration.")
+                    else:
+                        button_label = "Regenerate" if project.get('generated') else "Generate Portfolio Entry"
+                        if st.button(button_label, key=f"genport_{project['id']}", type="primary", use_container_width=True):
+                            loading = show_ai_loading(["Writing your portfolio entry…"], show_skeleton=False)
+                            content = ai.generate_portfolio_content(project)
+                            loading.empty()
+                            db.update_portfolio_project(project['id'], {'generated': content})
+                            st.rerun()
+
+                with col_b:
+                    if st.button("Delete", key=f"delport_{project['id']}", use_container_width=True):
+                        db.delete_portfolio_project(project['id'])
+                        st.rerun()
+
+                if project.get('generated'):
+                    st.markdown("---")
+                    st.markdown("#### Portfolio Entry")
+                    st.markdown(project['generated'])
 
 # ===== ANALYTICS PAGE =====
 elif page == "Analytics":

@@ -17,6 +17,7 @@ class Database:
                 self.db = self.client.job_tracker
                 self.applications_col = self.db.applications
                 self.profile_col = self.db.profile
+                self.portfolio_col = self.db.portfolio
                 self.use_mongodb = True
                 print("Connected to MongoDB!")
             except Exception as e:
@@ -31,6 +32,8 @@ class Database:
         self.use_mongodb = False
         self.applications = []
         self.current_id = 0
+        self.portfolio_projects = []
+        self.portfolio_current_id = 0
         print("Using in-memory storage")
     
     def add_application(self, data):
@@ -166,3 +169,60 @@ class Database:
                 self.profile = {}
             self.profile.update(updates)
             return self.profile
+
+    def get_portfolio_projects(self):
+        """Retrieve all portfolio projects"""
+        if self.use_mongodb:
+            projects = list(self.portfolio_col.find().sort("created_at", 1))
+            for p in projects:
+                p['id'] = str(p['_id'])
+            return projects
+        else:
+            return self.portfolio_projects
+
+    def add_portfolio_project(self, data):
+        """Add a new portfolio project"""
+        data['created_at'] = datetime.now().isoformat()
+
+        if self.use_mongodb:
+            result = self.portfolio_col.insert_one(data)
+            data['_id'] = str(result.inserted_id)
+            data['id'] = data['_id']
+            return data
+        else:
+            data['id'] = self.portfolio_current_id
+            self.portfolio_projects.append(data)
+            self.portfolio_current_id += 1
+            return data
+
+    def update_portfolio_project(self, project_id, data):
+        """Update a portfolio project (e.g. store generated write-up)"""
+        if self.use_mongodb:
+            from bson.objectid import ObjectId
+            try:
+                self.portfolio_col.update_one(
+                    {"_id": ObjectId(project_id)},
+                    {"$set": data}
+                )
+                return True
+            except Exception:
+                return False
+        else:
+            for p in self.portfolio_projects:
+                if p['id'] == project_id:
+                    p.update(data)
+                    return True
+            return False
+
+    def delete_portfolio_project(self, project_id):
+        """Delete a portfolio project by ID"""
+        if self.use_mongodb:
+            from bson.objectid import ObjectId
+            try:
+                self.portfolio_col.delete_one({"_id": ObjectId(project_id)})
+                return True
+            except Exception:
+                return False
+        else:
+            self.portfolio_projects = [p for p in self.portfolio_projects if p['id'] != project_id]
+            return True
