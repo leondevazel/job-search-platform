@@ -1,4 +1,6 @@
+import os
 import streamlit as st
+import streamlit_authenticator as stauth
 import altair as alt
 import pandas as pd
 from database import Database
@@ -577,6 +579,165 @@ def success_check(message):
         </div>
     """, unsafe_allow_html=True)
 
+
+def render_landing_page():
+    """Dark hero splash shown once before the login screen."""
+    st.markdown("""
+        <style>
+        [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
+            max-width: 100%;
+        }
+        .landing-hero {
+            margin: 1rem -1rem 0;
+            padding: 4.5rem 1.5rem 6rem;
+            background: radial-gradient(circle at 20% -10%, #1c2b4a 0%, #050505 55%), #000000;
+            border-radius: 28px;
+            text-align: center;
+        }
+        .landing-badge {
+            display: inline-block;
+            padding: 0.35rem 0.9rem;
+            border-radius: 980px;
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.06);
+            color: #B8C4E0;
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+            opacity: 0;
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        .landing-title {
+            color: #F5F6FA;
+            font-size: 3.2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin: 1.3rem auto 1.1rem;
+            max-width: 780px;
+            opacity: 0;
+            animation: fadeInUp 0.55s ease-out 0.08s forwards;
+        }
+        .landing-title .gradient-text {
+            background: linear-gradient(90deg, #6EA8FF 0%, #B98CFF 50%, #FF9BD2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .landing-sub {
+            color: #9AA3B8;
+            font-size: 1.15rem;
+            max-width: 560px;
+            margin: 0 auto 2.4rem;
+            line-height: 1.6;
+            opacity: 0;
+            animation: fadeInUp 0.55s ease-out 0.16s forwards;
+        }
+        .landing-features {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            max-width: 900px;
+            margin: 0 auto 2.6rem;
+        }
+        .landing-feature {
+            flex: 1 1 220px;
+            max-width: 260px;
+            background: rgba(255,255,255,0.045);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 16px;
+            padding: 1.4rem 1.2rem;
+            text-align: left;
+            opacity: 0;
+            animation: fadeInUp 0.5s ease-out forwards;
+            animation-delay: calc(var(--i, 0) * 90ms + 260ms);
+        }
+        .landing-feature .lf-icon { font-size: 1.4rem; margin-bottom: 0.6rem; }
+        .landing-feature .lf-title { color: #F0F1F5; font-weight: 600; font-size: 0.98rem; margin-bottom: 0.3rem; }
+        .landing-feature .lf-desc { color: #8891A5; font-size: 0.85rem; line-height: 1.5; }
+        .st-key-landing_cta {
+            margin-top: -4.2rem;
+            opacity: 0;
+            animation: fadeInUp 0.5s ease-out 0.5s forwards;
+        }
+        .st-key-landing_cta .stButton>button {
+            background: #FFFFFF;
+            color: #0A0A0A;
+            border: none;
+            font-weight: 600;
+            height: 3em;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        }
+        .st-key-landing_cta .stButton>button:hover {
+            background: #E4E4E4;
+        }
+        </style>
+        <div class="landing-hero">
+            <div class="landing-badge">AI-Powered Career Platform</div>
+            <div class="landing-title">Land your <span class="gradient-text">next role</span><br/>faster, with AI on your side.</div>
+            <div class="landing-sub">Track every application, get AI-matched company recommendations,
+                generate tailored cover letters, and turn your projects into a polished portfolio — all in one place.</div>
+            <div class="landing-features">
+                <div class="landing-feature" style="--i:0">
+                    <div class="lf-icon">🎯</div>
+                    <div class="lf-title">AI Job Matching</div>
+                    <div class="lf-desc">Personalized company and role recommendations based on your profile.</div>
+                </div>
+                <div class="landing-feature" style="--i:1">
+                    <div class="lf-icon">✍️</div>
+                    <div class="lf-title">Cover Letters</div>
+                    <div class="lf-desc">Auto-generated, tailored cover letters for every application.</div>
+                </div>
+                <div class="landing-feature" style="--i:2">
+                    <div class="lf-icon">📁</div>
+                    <div class="lf-title">Portfolio Builder</div>
+                    <div class="lf-desc">Turn raw project notes into recruiter-ready portfolio entries.</div>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("Get Started", key="landing_cta", type="primary", use_container_width=True):
+            st.session_state.show_landing = False
+            st.rerun()
+
+
+# ===== AUTH GATE =====
+credentials = {'usernames': db.get_all_users()}
+cookie_key = os.getenv("AUTH_COOKIE_KEY", "dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-production")
+authenticator = stauth.Authenticate(credentials, "job_platform_auth", cookie_key, 30)
+
+authenticator.login(location='unrendered')
+auth_status = st.session_state.get("authentication_status")
+
+if not auth_status:
+    st.session_state.setdefault('show_landing', True)
+    if st.session_state.show_landing:
+        render_landing_page()
+        st.stop()
+
+    page_header("Job Platform", "Sign in to track applications, get AI-matched recommendations, and build your portfolio")
+
+    authenticator.login(clear_on_submit=True)
+    auth_status = st.session_state.get("authentication_status")
+    if auth_status is False:
+        st.error("Username or password is incorrect")
+
+    with st.expander("New here? Create an account"):
+        try:
+            email, new_username, name = authenticator.register_user(captcha=False)
+            if email:
+                db.create_user(new_username, credentials['usernames'][new_username])
+                success_check(f"Account created for {name} — log in above")
+        except Exception as e:
+            st.error(str(e))
+
+    st.stop()
+
+user_id = st.session_state["username"]
+
 # Sidebar
 with st.sidebar:
     st.markdown("""
@@ -589,7 +750,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-    profile = db.get_profile()
+    profile = db.get_profile(user_id)
     if profile:
         st.markdown(f"""
             <div class="profile-chip">
@@ -614,13 +775,14 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    stats = db.get_statistics()
+    stats = db.get_statistics(user_id)
     col1, col2 = st.columns(2)
     col1.metric("Applications", stats['total'])
     col2.metric("Interviews", stats['interview'])
 
     st.markdown("---")
     st.toggle("Dark Mode", key="dark_mode")
+    authenticator.logout("Log Out", "sidebar", use_container_width=True)
 
     st.markdown('<div class="sidebar-footer">Built by Sunghoon Lee</div>', unsafe_allow_html=True)
 
@@ -628,7 +790,7 @@ with st.sidebar:
 if page == "Profile Setup":
     page_header("Profile Setup", "Set up your profile to get personalized job recommendations")
     
-    current_profile = db.get_profile() or {}
+    current_profile = db.get_profile(user_id) or {}
     
     with st.form("profile_form"):
         section_heading("Basic Information")
@@ -717,7 +879,7 @@ if page == "Profile Setup":
                 'resume': resume_text
             }
             
-            db.save_profile(profile_data)
+            db.save_profile(user_id, profile_data)
             st.success("Profile saved successfully")
             st.rerun()
 
@@ -725,7 +887,7 @@ if page == "Profile Setup":
 elif page == "Discover Jobs":
     page_header("Discover Jobs", "AI-powered job recommendations tailored to your profile")
     
-    profile = db.get_profile()
+    profile = db.get_profile(user_id)
     
     if not profile:
         st.warning("Complete your profile first to get personalized recommendations")
@@ -871,7 +1033,7 @@ elif page == "Discover Jobs":
                         'status': 'Applied',
                         'keywords': f"Match: {company_info.get('match')}"
                     }
-                    db.add_application(new_app)
+                    db.add_application(user_id, new_app)
                     success_check(f"Added {company_info.get('name')} to your applications")
             
             # Detailed Analysis Section
@@ -922,7 +1084,7 @@ elif page == "Discover Jobs":
                             'status': 'Applied',
                             'keywords': f"Match: {company_info.get('match')}"
                         }
-                        db.add_application(new_app)
+                        db.add_application(user_id, new_app)
                         success_check("Added to applications")
                 
                 if f'analysis_{idx}' in st.session_state:
@@ -953,9 +1115,9 @@ elif page == "Discover Jobs":
 elif page == "My Applications":
     page_header("My Applications", "Track and manage your job applications")
 
-    apps = db.get_all_applications()
-    stats = db.get_statistics()
-    profile = db.get_profile()
+    apps = db.get_all_applications(user_id)
+    stats = db.get_statistics(user_id)
+    profile = db.get_profile(user_id)
     
     # Stats
     col1, col2, col3, col4 = st.columns(4)
@@ -997,7 +1159,7 @@ elif page == "My Applications":
                         keywords = ai.extract_keywords(job_desc)
                         loading.empty()
 
-                    db.add_application({
+                    db.add_application(user_id, {
                         'company': company,
                         'position': position,
                         'job_url': job_url,
@@ -1054,12 +1216,12 @@ elif page == "My Applications":
                     )
                     
                     if st.button("Save", key=f"save_{app['id']}"):
-                        db.update_application(app['id'], {'status': new_status})
+                        db.update_application(user_id, app['id'], {'status': new_status})
                         st.success("Updated")
                         st.rerun()
                     
                     if st.button("Delete", key=f"del_{app['id']}"):
-                        db.delete_application(app['id'])
+                        db.delete_application(user_id, app['id'])
                         st.success("Deleted")
                         st.rerun()
 
@@ -1115,7 +1277,7 @@ elif page == "My Applications":
 elif page == "Portfolio":
     page_header("Portfolio", "Turn your projects into polished, AI-written portfolio entries")
 
-    projects = db.get_portfolio_projects()
+    projects = db.get_portfolio_projects(user_id)
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Projects", len(projects))
@@ -1148,7 +1310,7 @@ elif page == "Portfolio":
 
             if submit_project:
                 if title and description:
-                    db.add_portfolio_project({
+                    db.add_portfolio_project(user_id, {
                         'title': title,
                         'role': role,
                         'tech_stack': tech_stack,
@@ -1186,12 +1348,12 @@ elif page == "Portfolio":
                             loading = show_ai_loading(["Writing your portfolio entry…"], show_skeleton=False)
                             content = ai.generate_portfolio_content(project)
                             loading.empty()
-                            db.update_portfolio_project(project['id'], {'generated': content})
+                            db.update_portfolio_project(user_id, project['id'], {'generated': content})
                             st.rerun()
 
                 with col_b:
                     if st.button("Delete", key=f"delport_{project['id']}", use_container_width=True):
-                        db.delete_portfolio_project(project['id'])
+                        db.delete_portfolio_project(user_id, project['id'])
                         st.rerun()
 
                 if project.get('generated'):
@@ -1203,8 +1365,8 @@ elif page == "Portfolio":
 elif page == "Analytics":
     page_header("Analytics", "Job search insights")
     
-    apps = db.get_all_applications()
-    stats = db.get_statistics()
+    apps = db.get_all_applications(user_id)
+    stats = db.get_statistics(user_id)
     
     if len(apps) == 0:
         st.info("No data yet")
