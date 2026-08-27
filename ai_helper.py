@@ -273,3 +273,37 @@ Format as:
             return message.content[0].text
         except Exception as e:
             return f"Error generating roadmap: {str(e)}"
+
+    def generate_portfolio_content(self, project):
+        """Turn raw project notes into a polished portfolio write-up"""
+        try:
+            message = self.client.messages.create(
+                model="claude-sonnet-4-5-20250929",
+                max_tokens=1536,
+                messages=[{
+                    "role": "user",
+                    "content": f"""Turn these raw project notes into a polished portfolio entry.
+
+Project Title: {project.get('title', '')}
+Role: {project.get('role', '')}
+Tech Stack: {project.get('tech_stack', '')}
+Raw Description (what I did): {project.get('description', '')}
+Outcome/Impact (if any): {project.get('outcome', '')}
+
+Write a concise, achievement-oriented portfolio entry a recruiter would
+find compelling. Do not invent facts, metrics, or outcomes that are not
+implied by the notes above.
+
+Format as:
+**Summary:** [1-2 sentence hook describing what the project is and the problem it solves]
+**Highlights:**
+- [achievement/impact-oriented bullet 1]
+- [achievement/impact-oriented bullet 2]
+- [achievement/impact-oriented bullet 3]
+**Tags:** [comma-separated tech/skill tags suitable for a portfolio site]
+"""
+                }]
+            )
+            return message.content[0].text
+        except Exception as e:
+            return f"Error generating portfolio content: {str(e)}"
