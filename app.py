@@ -1,4 +1,6 @@
+import os
 import streamlit as st
+import streamlit_authenticator as stauth
 import altair as alt
 import pandas as pd
 from database import Database
@@ -577,6 +579,35 @@ def success_check(message):
         </div>
     """, unsafe_allow_html=True)
 
+# ===== AUTH GATE =====
+credentials = {'usernames': db.get_all_users()}
+cookie_key = os.getenv("AUTH_COOKIE_KEY", "dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-production")
+authenticator = stauth.Authenticate(credentials, "job_platform_auth", cookie_key, 30)
+
+authenticator.login(location='unrendered')
+auth_status = st.session_state.get("authentication_status")
+
+if not auth_status:
+    page_header("Job Platform", "Sign in to track applications, get AI-matched recommendations, and build your portfolio")
+
+    authenticator.login(clear_on_submit=True)
+    auth_status = st.session_state.get("authentication_status")
+    if auth_status is False:
+        st.error("Username or password is incorrect")
+
+    with st.expander("New here? Create an account"):
+        try:
+            email, new_username, name = authenticator.register_user(captcha=False)
+            if email:
+                db.create_user(new_username, credentials['usernames'][new_username])
+                success_check(f"Account created for {name} — log in above")
+        except Exception as e:
+            st.error(str(e))
+
+    st.stop()
+
+user_id = st.session_state["username"]
+
 # Sidebar
 with st.sidebar:
     st.markdown("""
@@ -589,7 +620,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-    profile = db.get_profile()
+    profile = db.get_profile(user_id)
     if profile:
         st.markdown(f"""
             <div class="profile-chip">
@@ -614,13 +645,14 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    stats = db.get_statistics()
+    stats = db.get_statistics(user_id)
     col1, col2 = st.columns(2)
     col1.metric("Applications", stats['total'])
     col2.metric("Interviews", stats['interview'])
 
     st.markdown("---")
     st.toggle("Dark Mode", key="dark_mode")
+    authenticator.logout("Log Out", "sidebar", use_container_width=True)
 
     st.markdown('<div class="sidebar-footer">Built by Sunghoon Lee</div>', unsafe_allow_html=True)
 
@@ -628,7 +660,7 @@ with st.sidebar:
 if page == "Profile Setup":
     page_header("Profile Setup", "Set up your profile to get personalized job recommendations")
     
-    current_profile = db.get_profile() or {}
+    current_profile = db.get_profile(user_id) or {}
     
     with st.form("profile_form"):
         section_heading("Basic Information")
@@ -717,7 +749,7 @@ if page == "Profile Setup":
                 'resume': resume_text
             }
             
-            db.save_profile(profile_data)
+            db.save_profile(user_id, profile_data)
             st.success("Profile saved successfully")
             st.rerun()
 
@@ -725,7 +757,7 @@ if page == "Profile Setup":
 elif page == "Discover Jobs":
     page_header("Discover Jobs", "AI-powered job recommendations tailored to your profile")
     
-    profile = db.get_profile()
+    profile = db.get_profile(user_id)
     
     if not profile:
         st.warning("Complete your profile first to get personalized recommendations")
@@ -871,7 +903,7 @@ elif page == "Discover Jobs":
                         'status': 'Applied',
                         'keywords': f"Match: {company_info.get('match')}"
                     }
-                    db.add_application(new_app)
+                    db.add_application(user_id, new_app)
                     success_check(f"Added {company_info.get('name')} to your applications")
             
             # Detailed Analysis Section
@@ -922,7 +954,7 @@ elif page == "Discover Jobs":
                             'status': 'Applied',
                             'keywords': f"Match: {company_info.get('match')}"
                         }
-                        db.add_application(new_app)
+                        db.add_application(user_id, new_app)
                         success_check("Added to applications")
                 
                 if f'analysis_{idx}' in st.session_state:
@@ -953,9 +985,9 @@ elif page == "Discover Jobs":
 elif page == "My Applications":
     page_header("My Applications", "Track and manage your job applications")
 
-    apps = db.get_all_applications()
-    stats = db.get_statistics()
-    profile = db.get_profile()
+    apps = db.get_all_applications(user_id)
+    stats = db.get_statistics(user_id)
+    profile = db.get_profile(user_id)
     
     # Stats
     col1, col2, col3, col4 = st.columns(4)
@@ -997,7 +1029,7 @@ elif page == "My Applications":
                         keywords = ai.extract_keywords(job_desc)
                         loading.empty()
 
-                    db.add_application({
+                    db.add_application(user_id, {
                         'company': company,
                         'position': position,
                         'job_url': job_url,
@@ -1054,12 +1086,12 @@ elif page == "My Applications":
                     )
                     
                     if st.button("Save", key=f"save_{app['id']}"):
-                        db.update_application(app['id'], {'status': new_status})
+                        db.update_application(user_id, app['id'], {'status': new_status})
                         st.success("Updated")
                         st.rerun()
                     
                     if st.button("Delete", key=f"del_{app['id']}"):
-                        db.delete_application(app['id'])
+                        db.delete_application(user_id, app['id'])
                         st.success("Deleted")
                         st.rerun()
 
@@ -1115,7 +1147,7 @@ elif page == "My Applications":
 elif page == "Portfolio":
     page_header("Portfolio", "Turn your projects into polished, AI-written portfolio entries")
 
-    projects = db.get_portfolio_projects()
+    projects = db.get_portfolio_projects(user_id)
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Projects", len(projects))
@@ -1148,7 +1180,7 @@ elif page == "Portfolio":
 
             if submit_project:
                 if title and description:
-                    db.add_portfolio_project({
+                    db.add_portfolio_project(user_id, {
                         'title': title,
                         'role': role,
                         'tech_stack': tech_stack,
@@ -1186,12 +1218,12 @@ elif page == "Portfolio":
                             loading = show_ai_loading(["Writing your portfolio entry…"], show_skeleton=False)
                             content = ai.generate_portfolio_content(project)
                             loading.empty()
-                            db.update_portfolio_project(project['id'], {'generated': content})
+                            db.update_portfolio_project(user_id, project['id'], {'generated': content})
                             st.rerun()
 
                 with col_b:
                     if st.button("Delete", key=f"delport_{project['id']}", use_container_width=True):
-                        db.delete_portfolio_project(project['id'])
+                        db.delete_portfolio_project(user_id, project['id'])
                         st.rerun()
 
                 if project.get('generated'):
@@ -1203,8 +1235,8 @@ elif page == "Portfolio":
 elif page == "Analytics":
     page_header("Analytics", "Job search insights")
     
-    apps = db.get_all_applications()
-    stats = db.get_statistics()
+    apps = db.get_all_applications(user_id)
+    stats = db.get_statistics(user_id)
     
     if len(apps) == 0:
         st.info("No data yet")
