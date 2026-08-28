@@ -1238,7 +1238,7 @@ elif page == "My Applications":
                 if st.session_state.ai_available:
                     st.markdown("---")
                     st.markdown("**AI Writing Tools**")
-                    col_a, col_b = st.columns(2)
+                    col_a, col_b, col_c = st.columns(3)
 
                     with col_a:
                         if st.button("Generate Cover Letter", key=f"cover_{app['id']}", use_container_width=True):
@@ -1275,6 +1275,21 @@ elif page == "My Applications":
                                 loading.empty()
                                 st.session_state[f'resume_tips_{app["id"]}'] = tips
 
+                    with col_c:
+                        if st.button("Check Match Score", key=f"matchscore_{app['id']}", use_container_width=True):
+                            if not (profile and profile.get('resume')):
+                                st.warning("Add your resume in Profile Setup first")
+                            elif not app.get('job_description'):
+                                st.warning("This application has no job description saved")
+                            else:
+                                loading = show_ai_loading(
+                                    ["Scoring your resume against this posting…"],
+                                    show_skeleton=False,
+                                )
+                                match = ai.analyze_job_match(profile.get('resume', ''), app.get('job_description', ''))
+                                loading.empty()
+                                st.session_state[f'match_score_{app["id"]}'] = match
+
                     if f'cover_letter_{app["id"]}' in st.session_state:
                         st.markdown("#### Cover Letter")
                         st.markdown(st.session_state[f'cover_letter_{app["id"]}'])
@@ -1282,6 +1297,10 @@ elif page == "My Applications":
                     if f'resume_tips_{app["id"]}' in st.session_state:
                         st.markdown("#### Resume Suggestions")
                         st.markdown(st.session_state[f'resume_tips_{app["id"]}'])
+
+                    if f'match_score_{app["id"]}' in st.session_state:
+                        st.markdown("#### Match Score")
+                        st.markdown(st.session_state[f'match_score_{app["id"]}'])
 
 # ===== PORTFOLIO PAGE =====
 elif page == "Portfolio":
