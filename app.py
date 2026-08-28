@@ -433,6 +433,8 @@ st.markdown("""
         animation-delay: calc(var(--i, 0) * 70ms + 200ms);
     }
     .score-ring-inner::after { content: counter(sn) '%'; }
+    .score-ring-inner.na { animation: none; }
+    .score-ring-inner.na::after { content: '—'; }
     @keyframes scoreCountUp { to { --num: var(--target-score, 0); } }
 
     /* ---- Expanders ---- */
@@ -953,12 +955,17 @@ elif page == "Discover Jobs":
         
         for idx, company_info in enumerate(all_companies[:displayed_count]):
             
-            try:
-                score_num = int(company_info.get('score', '0%').replace('%', ''))
-            except:
-                score_num = 0
+            # Pull the first number out of whatever the model wrote (it doesn't
+            # always stick to a bare "NN%" — "~65%", "N/A", "60-70%" all show up).
+            # Defaulting a parse failure to 0% would silently show "Possible fit"
+            # in red for a company we simply couldn't read a score for, which
+            # misrepresents it as a bad match rather than an unscored one.
+            score_digits = re.search(r'\d+', company_info.get('score', ''))
+            score_num = int(score_digits.group()) if score_digits else None
 
-            if score_num >= 80:
+            if score_num is None:
+                tier_color, tier_label = "var(--text-muted)", "Score unavailable"
+            elif score_num >= 80:
                 tier_color, tier_label = "var(--success)", "Strong fit"
             elif score_num >= 60:
                 tier_color, tier_label = "var(--warning)", "Good fit"
@@ -966,7 +973,8 @@ elif page == "Discover Jobs":
                 tier_color, tier_label = "var(--danger)", "Possible fit"
 
             ring_circumference = 150.8
-            ring_offset = ring_circumference * (1 - max(0, min(score_num, 100)) / 100)
+            ring_offset = ring_circumference * (1 - max(0, min(score_num or 0, 100)) / 100)
+            ring_inner_class = "score-ring-inner na" if score_num is None else "score-ring-inner"
             stagger = min(idx, 8)
 
             posting_status = company_info.get('posting_status', '')
@@ -988,7 +996,7 @@ elif page == "Discover Jobs":
                             stroke-dashoffset="{ring_offset}"
                             style="--i:{stagger};" />
                     </svg>
-                    <div class="score-ring-inner" style="color:{tier_color}; --target-score:{score_num}; --i:{stagger};"></div>
+                    <div class="{ring_inner_class}" style="color:{tier_color}; --target-score:{score_num or 0}; --i:{stagger};"></div>
                 </div>
                 <div class="company-card-info">
                     <h3>{company_info.get('name', 'Unknown')} &mdash; {company_info.get('position', 'N/A')}</h3>
