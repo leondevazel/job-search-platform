@@ -1,6 +1,7 @@
 import os
 import re
 import streamlit as st
+import streamlit.components.v1 as components
 import streamlit_authenticator as stauth
 import altair as alt
 import pandas as pd
@@ -593,42 +594,43 @@ def success_check(message):
 
 
 def render_landing_page():
-    """Dark hero splash shown once before the login screen. Rather than a
-    generic centered hero, this mirrors the app's own Discover Jobs card
-    (score ring + tier label) as the hero visual, so the splash looks like
-    a shot of the actual product instead of stock hero-section furniture."""
-    ring_c = 150.8
-    score = 94
-    offset = ring_c * (1 - score / 100)
-
-    st.markdown(f"""
+    """Dark hero splash shown once before the login screen. The visual
+    centerpiece is a real, interactive rotating globe (via the open-source
+    cobe WebGL library, loaded from CDN inside a components.html iframe —
+    the same kind of piece OriginKit's component library ships) rather than
+    generic hero-section furniture, with markers on the app's target
+    locations (Seoul, SF Bay Area, NYC)."""
+    st.markdown("""
         <style>
-        [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {{
+        [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
             max-width: 100%;
-        }}
-        .landing-hero {{
-            --surface: #14161c;
-            --surface-hover: #1b1e26;
-            --border: rgba(255,255,255,0.12);
-            --text: #F5F6FA;
-            --text-muted: #9AA3B8;
-            --success: #3DDC84;
-            --accent-tint: rgba(110,168,255,0.16);
-            --accent-text: #8FC1FF;
-            --hover-tint: rgba(255,255,255,0.06);
-            margin: 1rem -1rem 0;
-            padding: 4rem 3rem;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    cobe_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "cobe.esm.js")
+    try:
+        with open(cobe_path, encoding="utf-8") as f:
+            cobe_src = f.read()
+    except OSError:
+        cobe_src = ""
+
+    hero_html = """
+        <style>
+        html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hero {
             background: radial-gradient(circle at 15% 20%, #1c2b4a 0%, #050505 60%), #000000;
             border-radius: 28px;
+            padding: 2.6rem 3rem 5.5rem;
             display: grid;
             grid-template-columns: 1.15fr 0.85fr;
-            gap: 2rem;
             align-items: center;
-        }}
-        @media (max-width: 900px) {{
-            .landing-hero {{ grid-template-columns: 1fr; padding: 3rem 1.75rem; }}
-        }}
-        .landing-badge {{
+            gap: 1rem;
+            height: 390px;
+        }
+        .badge {
             display: inline-block;
             padding: 0.35rem 0.9rem;
             border-radius: 980px;
@@ -639,137 +641,108 @@ def render_landing_page():
             letter-spacing: 0.02em;
             opacity: 0;
             animation: fadeInUp 0.5s ease-out forwards;
-        }}
-        .landing-title {{
+        }
+        .title {
             color: #F5F6FA;
-            font-size: 2.9rem;
+            font-size: 2.7rem;
             font-weight: 700;
             letter-spacing: -0.03em;
             line-height: 1.14;
-            margin: 1.2rem 0 1.1rem;
+            margin: 1.1rem 0 1rem;
             opacity: 0;
             animation: fadeInUp 0.55s ease-out 0.08s forwards;
-        }}
-        .landing-title .gradient-text {{
-            background: linear-gradient(90deg, #6EA8FF 0%, #B98CFF 50%, #FF9BD2 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-        .landing-sub {{
-            color: #9AA3B8;
-            font-size: 1.08rem;
-            max-width: 480px;
-            margin: 0 0 2rem;
-            line-height: 1.6;
-            opacity: 0;
-            animation: fadeInUp 0.55s ease-out 0.16s forwards;
-        }}
-        .landing-tags {{
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-top: 1.6rem;
-            opacity: 0;
-            animation: fadeInUp 0.5s ease-out 0.3s forwards;
-        }}
-        .landing-tags span {{
-            font-size: 0.78rem;
-            color: #8891A5;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 980px;
-            padding: 0.25rem 0.7rem;
-        }}
-        .landing-mockup {{
-            position: relative;
-            height: 300px;
-        }}
-        .landing-mockup .company-card {{
-            position: absolute;
-            width: 280px;
-            margin: 0;
-            background: rgba(255,255,255,0.055);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px;
-            padding: 16px 18px;
-            backdrop-filter: blur(8px);
-        }}
-        .landing-mockup .company-card.back {{
-            top: 4px;
-            right: 4px;
-            transform: rotate(5deg);
-            opacity: 0.5;
-            filter: blur(0.3px);
-        }}
-        .landing-mockup .company-card.front {{
-            top: 78px;
-            right: 46px;
-            transform: rotate(-4deg);
-            box-shadow: 0 24px 60px rgba(0,0,0,0.55);
-            animation-delay: 0.4s;
-        }}
-        .st-key-landing_cta {{
-            margin-top: -3.6rem;
-            max-width: 220px;
+        }
+        .title .gradient { background: linear-gradient(90deg, #6EA8FF 0%, #B98CFF 50%, #FF9BD2 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sub { color: #9AA3B8; font-size: 1.02rem; max-width: 440px; line-height: 1.6; opacity: 0; animation: fadeInUp 0.55s ease-out 0.16s forwards; }
+        .tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.4rem; opacity: 0; animation: fadeInUp 0.5s ease-out 0.3s forwards; }
+        .tags span { font-size: 0.76rem; color: #8891A5; border: 1px solid rgba(255,255,255,0.1); border-radius: 980px; padding: 0.24rem 0.68rem; }
+        .globe-wrap { position: relative; width: 100%; height: 320px; opacity: 0; animation: fadeInUp 0.6s ease-out 0.15s forwards; }
+        canvas#globe { width: 320px; height: 320px; max-width: 100%; cursor: grab; }
+        </style>
+        <div class="hero">
+            <div>
+                <div class="badge">AI-Powered Career Platform</div>
+                <div class="title">Land your <span class="gradient">next role</span><br/>faster, with AI on your side.</div>
+                <div class="sub">AI-matched companies with real posting checks, tailored cover letters,
+                    and a portfolio builder — everything you need to go from profile to offer.</div>
+                <div class="tags">
+                    <span>🎯 AI Job Matching</span>
+                    <span>✍️ Cover Letters</span>
+                    <span>📁 Portfolio Builder</span>
+                </div>
+            </div>
+            <div class="globe-wrap">
+                <canvas id="globe" width="640" height="640"></canvas>
+            </div>
+        </div>
+        <script type="module">
+        __COBE_SRC__
+
+        let phi = 0;
+        const canvas = document.getElementById("globe");
+        createGlobe(canvas, {
+            devicePixelRatio: 2,
+            width: 640,
+            height: 640,
+            phi: 0,
+            theta: 0.3,
+            dark: 1,
+            diffuse: 1.2,
+            scale: 1,
+            mapSamples: 16000,
+            mapBrightness: 6,
+            baseColor: [0.32, 0.36, 0.5],
+            markerColor: [0.45, 0.78, 1],
+            glowColor: [0.28, 0.34, 0.6],
+            offset: [0, 0],
+            opacity: 0.95,
+            markers: [
+                { location: [37.5665, 126.9780], size: 0.09 },
+                { location: [37.7749, -122.4194], size: 0.06 },
+                { location: [40.7128, -74.0060], size: 0.05 },
+                { location: [1.3521, 103.8198], size: 0.04 }
+            ],
+            onRender: (state) => {
+                state.phi = phi;
+                phi += 0.0032;
+            }
+        });
+        </script>
+    """
+
+    # Inline the vendored cobe build rather than loading it from a CDN, so the
+    # hero still renders if unpkg is blocked or offline. Its ESM default export
+    # is rebound to the name the init code below calls; the minified symbol
+    # varies between builds, so match it rather than hardcoding it.
+    if cobe_src:
+        cobe_src = re.sub(
+            r"export\s*\{\s*(\w+)\s+as\s+default\s*\}\s*;?",
+            r"const createGlobe=\1;",
+            cobe_src,
+        )
+    hero_html = hero_html.replace("__COBE_SRC__", cobe_src)
+    components.html(hero_html, height=400)
+
+    st.markdown("""
+        <style>
+        .st-key-landing_cta {
+            margin-top: -5rem;
+            margin-left: 3rem;
             opacity: 0;
             animation: fadeInUp 0.5s ease-out 0.45s forwards;
-        }}
-        .st-key-landing_cta .stButton>button {{
+        }
+        .st-key-landing_cta .stButton>button {
             background: #FFFFFF;
             color: #0A0A0A;
             border: none;
             font-weight: 600;
             height: 3em;
             box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-        }}
-        .st-key-landing_cta .stButton>button:hover {{
+        }
+        .st-key-landing_cta .stButton>button:hover {
             background: #E4E4E4;
-        }}
+        }
         </style>
-        <div class="landing-hero">
-            <div>
-                <div class="landing-badge">AI-Powered Career Platform</div>
-                <div class="landing-title">Land your <span class="gradient-text">next role</span><br/>faster, with AI on your side.</div>
-                <div class="landing-sub">AI-matched companies with real posting checks, tailored cover letters,
-                    and a portfolio builder — everything you need to go from profile to offer.</div>
-                <div class="landing-tags">
-                    <span>🎯 AI Job Matching</span>
-                    <span>✍️ Cover Letters</span>
-                    <span>📁 Portfolio Builder</span>
-                </div>
-            </div>
-            <div class="landing-mockup">
-                <div class="company-card back">
-                    <div class="score-ring">
-                        <svg viewBox="0 0 56 56" width="54" height="54">
-                            <circle class="ring-track" cx="28" cy="28" r="24" />
-                            <circle class="ring-progress" cx="28" cy="28" r="24" stroke="var(--text-muted)"
-                                stroke-dasharray="{ring_c}" stroke-dashoffset="{ring_c * 0.4}" />
-                        </svg>
-                    </div>
-                    <div class="company-card-info">
-                        <h3>Naver &mdash; Backend Engineer</h3>
-                        <span class="tier-label">Good fit</span>
-                    </div>
-                </div>
-                <div class="company-card front">
-                    <div class="score-ring">
-                        <svg viewBox="0 0 56 56" width="54" height="54">
-                            <circle class="ring-track" cx="28" cy="28" r="24" />
-                            <circle class="ring-progress" cx="28" cy="28" r="24" stroke="var(--success)"
-                                stroke-dasharray="{ring_c}" stroke-dashoffset="{offset}" />
-                        </svg>
-                        <div class="score-ring-inner" style="color:var(--success); --target-score:{score};"></div>
-                    </div>
-                    <div class="company-card-info">
-                        <h3>SK Hynix &mdash; ML Engineer</h3>
-                        <span class="tier-label" style="color:var(--success);">Strong fit</span>
-                        <span class="posting-badge found" style="margin-left:0;">🔗 Posting found</span>
-                    </div>
-                </div>
-            </div>
-        </div>
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns([1, 2])
