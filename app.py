@@ -1,7 +1,6 @@
 import os
 import re
 import streamlit as st
-import streamlit.components.v1 as components
 import streamlit_authenticator as stauth
 import altair as alt
 import pandas as pd
@@ -594,159 +593,63 @@ def success_check(message):
 
 
 def render_landing_page():
-    """Dark hero splash shown once before the login screen. The visual
-    centerpiece is a real, interactive rotating globe (via the open-source
-    cobe WebGL library, loaded from CDN inside a components.html iframe —
-    the same kind of piece OriginKit's component library ships) rather than
-    generic hero-section furniture, with markers on the app's target
-    locations (Seoul, SF Bay Area, NYC)."""
+    """Landing splash shown once before the login screen.
+
+    Deliberately plain: a single centered headline, one line of supporting
+    copy, and one action — the Apple product-page pattern. No gradient text,
+    no emoji chips, no badge; the restraint is the design."""
     st.markdown("""
         <style>
         [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
-            max-width: 100%;
+            padding-top: 5rem;
+            max-width: 820px;
         }
-        </style>
-    """, unsafe_allow_html=True)
-
-    cobe_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "cobe.esm.js")
-    try:
-        with open(cobe_path, encoding="utf-8") as f:
-            cobe_src = f.read()
-    except OSError:
-        cobe_src = ""
-
-    hero_html = """
-        <style>
-        html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .hero {
-            background: radial-gradient(circle at 15% 20%, #1c2b4a 0%, #050505 60%), #000000;
-            border-radius: 28px;
-            padding: 2.6rem 3rem 5.5rem;
-            display: grid;
-            grid-template-columns: 1.15fr 0.85fr;
-            align-items: center;
-            gap: 1rem;
-            height: 390px;
+        .landing {
+            text-align: center;
+            padding: 3rem 1rem 0;
         }
-        .badge {
-            display: inline-block;
-            padding: 0.35rem 0.9rem;
-            border-radius: 980px;
-            border: 1px solid rgba(255,255,255,0.14);
-            background: rgba(255,255,255,0.06);
-            color: #B8C4E0;
-            font-size: 0.8rem;
-            letter-spacing: 0.02em;
+        .landing h1 {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-size: clamp(2.6rem, 6vw, 4.2rem) !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.035em;
+            line-height: 1.06;
+            color: var(--text) !important;
+            margin: 0 0 1.4rem;
             opacity: 0;
-            animation: fadeInUp 0.5s ease-out forwards;
+            animation: fadeInUp 0.6s ease-out forwards;
         }
-        .title {
-            color: #F5F6FA;
-            font-size: 2.7rem;
-            font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.14;
-            margin: 1.1rem 0 1rem;
+        .landing .lede {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: clamp(1.1rem, 2vw, 1.4rem);
+            font-weight: 400;
+            line-height: 1.45;
+            color: var(--text-muted);
+            max-width: 34ch;
+            margin: 0 auto;
             opacity: 0;
-            animation: fadeInUp 0.55s ease-out 0.08s forwards;
+            animation: fadeInUp 0.6s ease-out 0.1s forwards;
         }
-        .title .gradient { background: linear-gradient(90deg, #6EA8FF 0%, #B98CFF 50%, #FF9BD2 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .sub { color: #9AA3B8; font-size: 1.02rem; max-width: 440px; line-height: 1.6; opacity: 0; animation: fadeInUp 0.55s ease-out 0.16s forwards; }
-        .tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.4rem; opacity: 0; animation: fadeInUp 0.5s ease-out 0.3s forwards; }
-        .tags span { font-size: 0.76rem; color: #8891A5; border: 1px solid rgba(255,255,255,0.1); border-radius: 980px; padding: 0.24rem 0.68rem; }
-        .globe-wrap { position: relative; width: 100%; height: 320px; opacity: 0; animation: fadeInUp 0.6s ease-out 0.15s forwards; }
-        canvas#globe { width: 320px; height: 320px; max-width: 100%; cursor: grab; }
-        </style>
-        <div class="hero">
-            <div>
-                <div class="badge">AI-Powered Career Platform</div>
-                <div class="title">Land your <span class="gradient">next role</span><br/>faster, with AI on your side.</div>
-                <div class="sub">AI-matched companies with real posting checks, tailored cover letters,
-                    and a portfolio builder — everything you need to go from profile to offer.</div>
-                <div class="tags">
-                    <span>🎯 AI Job Matching</span>
-                    <span>✍️ Cover Letters</span>
-                    <span>📁 Portfolio Builder</span>
-                </div>
-            </div>
-            <div class="globe-wrap">
-                <canvas id="globe" width="640" height="640"></canvas>
-            </div>
-        </div>
-        <script type="module">
-        __COBE_SRC__
-
-        let phi = 0;
-        const canvas = document.getElementById("globe");
-        createGlobe(canvas, {
-            devicePixelRatio: 2,
-            width: 640,
-            height: 640,
-            phi: 0,
-            theta: 0.3,
-            dark: 1,
-            diffuse: 1.2,
-            scale: 1,
-            mapSamples: 16000,
-            mapBrightness: 6,
-            baseColor: [0.32, 0.36, 0.5],
-            markerColor: [0.45, 0.78, 1],
-            glowColor: [0.28, 0.34, 0.6],
-            offset: [0, 0],
-            opacity: 0.95,
-            markers: [
-                { location: [37.5665, 126.9780], size: 0.09 },
-                { location: [37.7749, -122.4194], size: 0.06 },
-                { location: [40.7128, -74.0060], size: 0.05 },
-                { location: [1.3521, 103.8198], size: 0.04 }
-            ],
-            onRender: (state) => {
-                state.phi = phi;
-                phi += 0.0032;
-            }
-        });
-        </script>
-    """
-
-    # Inline the vendored cobe build rather than loading it from a CDN, so the
-    # hero still renders if unpkg is blocked or offline. Its ESM default export
-    # is rebound to the name the init code below calls; the minified symbol
-    # varies between builds, so match it rather than hardcoding it.
-    if cobe_src:
-        cobe_src = re.sub(
-            r"export\s*\{\s*(\w+)\s+as\s+default\s*\}\s*;?",
-            r"const createGlobe=\1;",
-            cobe_src,
-        )
-    hero_html = hero_html.replace("__COBE_SRC__", cobe_src)
-    components.html(hero_html, height=400)
-
-    st.markdown("""
-        <style>
         .st-key-landing_cta {
-            margin-top: -5rem;
-            margin-left: 3rem;
+            max-width: 200px;
+            margin: 2.4rem auto 0;
             opacity: 0;
-            animation: fadeInUp 0.5s ease-out 0.45s forwards;
+            animation: fadeInUp 0.6s ease-out 0.2s forwards;
         }
         .st-key-landing_cta .stButton>button {
-            background: #FFFFFF;
-            color: #0A0A0A;
-            border: none;
-            font-weight: 600;
-            height: 3em;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-        }
-        .st-key-landing_cta .stButton>button:hover {
-            background: #E4E4E4;
+            font-weight: 400;
         }
         </style>
+        <div class="landing">
+            <h1>Your job search,<br/>finally organized.</h1>
+            <p class="lede">Track every application. Get matched to roles that fit.</p>
+        </div>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns([1, 2])
-    with col1:
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
         if st.button("Get Started", key="landing_cta", type="primary", use_container_width=True):
             st.session_state.show_landing = False
             st.rerun()
