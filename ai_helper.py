@@ -4,6 +4,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _lang_instruction(lang):
+    """Appended to prompts so AI-generated content matches the app's
+    selected display language. Only covers free-form prose — callers whose
+    output gets field-parsed by app.py (recommend_companies) use a variant
+    that keeps the structural markers in English so parsing still works."""
+    if lang == "ko":
+        return "\n\nRespond entirely in Korean (한국어)."
+    return ""
+
+
 class AIHelper:
     def __init__(self):
         """Initialize Claude AI client with API key"""
@@ -12,7 +23,7 @@ class AIHelper:
             raise ValueError("ANTHROPIC_API_KEY not found in .env file")
         self.client = Anthropic(api_key=api_key)
     
-    def extract_keywords(self, job_description):
+    def extract_keywords(self, job_description, lang="en"):
         """Extract key information from job description using AI"""
         try:
             message = self.client.messages.create(
@@ -24,10 +35,10 @@ class AIHelper:
                     1. Top 10 most important technical skills/keywords
                     2. Required years of experience
                     3. Top 3 key responsibilities
-                    
+
                     Job Description:
                     {job_description}
-                    
+
                     Format your response as:
                     **Skills:** skill1, skill2, skill3...
                     **Experience:** X years
@@ -35,14 +46,14 @@ class AIHelper:
                     - responsibility 1
                     - responsibility 2
                     - responsibility 3
-                    """
+                    """ + _lang_instruction(lang)
                 }]
             )
             return message.content[0].text
         except Exception as e:
             return f"Error analyzing job description: {str(e)}"
     
-    def customize_resume(self, resume, job_description):
+    def customize_resume(self, resume, job_description, lang="en"):
         """Provide suggestions to customize resume for specific job"""
         try:
             message = self.client.messages.create(
@@ -50,26 +61,26 @@ class AIHelper:
                 max_tokens=2048,
                 messages=[{
                     "role": "user",
-                    "content": f"""Given this resume and job description, 
+                    "content": f"""Given this resume and job description,
                     suggest 5 specific improvements to tailor the resume.
-                    
+
                     Resume:
                     {resume}
-                    
+
                     Job Description:
                     {job_description}
-                    
-                    Provide actionable, specific suggestions that will make 
+
+                    Provide actionable, specific suggestions that will make
                     this resume stand out for this particular job.
-                    """
+                    """ + _lang_instruction(lang)
                 }]
             )
             return message.content[0].text
         except Exception as e:
             return f"Error generating suggestions: {str(e)}"
     
-    def generate_cover_letter(self, company, position, 
-                            job_description, resume):
+    def generate_cover_letter(self, company, position,
+                            job_description, resume, lang="en"):
         """Generate a professional cover letter"""
         try:
             message = self.client.messages.create(
@@ -80,24 +91,24 @@ class AIHelper:
                     "content": f"""Write a professional cover letter for:
                     Company: {company}
                     Position: {position}
-                    
+
                     Job Description:
                     {job_description}
-                    
+
                     My Resume:
                     {resume}
-                    
-                    Make it concise (3-4 paragraphs), genuine, and tailored 
-                    to this specific role. Highlight relevant experience and 
+
+                    Make it concise (3-4 paragraphs), genuine, and tailored
+                    to this specific role. Highlight relevant experience and
                     express genuine interest in the company.
-                    """
+                    """ + _lang_instruction(lang)
                 }]
             )
             return message.content[0].text
         except Exception as e:
             return f"Error generating cover letter: {str(e)}"
     
-    def analyze_job_match(self, resume, job_description):
+    def analyze_job_match(self, resume, job_description, lang="en"):
         """Analyze how well resume matches the job requirements"""
         try:
             message = self.client.messages.create(
@@ -106,19 +117,19 @@ class AIHelper:
                 messages=[{
                     "role": "user",
                     "content": f"""Analyze how well this resume matches the job requirements.
-                    
+
                     Resume:
                     {resume}
-                    
+
                     Job Description:
                     {job_description}
-                    
+
                     Provide:
                     1. Match score (0-100%)
                     2. Strong matches (what aligns well)
                     3. Gaps (what's missing)
                     4. Top 3 recommendations to improve match
-                    
+
                     Format as:
                     **Match Score:** XX%
                     **Strong Matches:**
@@ -131,17 +142,29 @@ class AIHelper:
                     1. recommendation 1
                     2. recommendation 2
                     3. recommendation 3
-                    """
+                    """ + _lang_instruction(lang)
                 }]
             )
             return message.content[0].text
         except Exception as e:
             return f"Error analyzing match: {str(e)}"
     
-    def recommend_companies(self, profile):
+    def recommend_companies(self, profile, lang="en"):
         """Recommend companies based on user profile, grounded with live web search
         so posting status and culture notes reflect what was actually found online
         rather than the model's memorized guesses."""
+        # app.py parses this output line-by-line looking for literal English
+        # markers ("**Company:**", "Found:", ...), so the language instruction
+        # here explicitly keeps those in English while translating the content.
+        content_lang_instruction = (
+            "\n\nWrite all descriptive content (company names, reasons, requirements, "
+            "culture notes, etc.) in Korean (한국어). Keep the field labels themselves "
+            "(**Company:**, **Position:**, **Match Score:**, **Why Good Match:**, "
+            "**Requirements:**, **Gaps:**, **Posting Status:**, **Culture Notes:**) and "
+            "the literal word \"Found:\" exactly in English as shown, so the template "
+            "stays machine-parseable."
+            if lang == "ko" else ""
+        )
         try:
             skills = ", ".join(profile.get('skills', []))
             education = profile.get('education', '')
@@ -197,7 +220,7 @@ Format each company as:
 ---
 
 Focus on both Korean companies (Samsung, SK Hynix, Naver, Kakao, etc.) and global companies based on location preference.
-"""
+""" + content_lang_instruction
                 }]
             )
             text_parts = [block.text for block in message.content if block.type == "text"]
@@ -205,7 +228,7 @@ Focus on both Korean companies (Samsung, SK Hynix, Naver, Kakao, etc.) and globa
         except Exception as e:
             return f"Error generating recommendations: {str(e)}"
     
-    def analyze_company_fit(self, profile, company_name, job_description):
+    def analyze_company_fit(self, profile, company_name, job_description, lang="en"):
         """Analyze detailed fit for a specific company"""
         try:
             skills = ", ".join(profile.get('skills', []))
@@ -249,14 +272,14 @@ Format as:
 2. Learn/build Z (estimated time: Y weeks)
 
 **Recommended Timeline:** X weeks total
-"""
+""" + _lang_instruction(lang)
                 }]
             )
             return message.content[0].text
         except Exception as e:
             return f"Error analyzing fit: {str(e)}"
-    
-    def generate_learning_roadmap(self, current_skills, target_skills):
+
+    def generate_learning_roadmap(self, current_skills, target_skills, lang="en"):
         """Generate learning roadmap for missing skills"""
         try:
             message = self.client.messages.create(
@@ -287,14 +310,14 @@ Format as:
 ...
 
 **Total Timeline:** X weeks
-"""
+""" + _lang_instruction(lang)
                 }]
             )
             return message.content[0].text
         except Exception as e:
             return f"Error generating roadmap: {str(e)}"
 
-    def strengthen_resume_for_company(self, resume, company_name, culture_notes=""):
+    def strengthen_resume_for_company(self, resume, company_name, culture_notes="", lang="en"):
         """Suggest resume wording that genuinely reflects a specific company's stated
         culture/values, grounded with live web search. Never invents new experience —
         only reorders or rewords what is already in the resume."""
@@ -330,7 +353,7 @@ Provide:
 
 Only suggest rewording or reprioritizing what is already true in the resume above.
 Do not suggest adding experience, skills, or metrics that are not already there.
-"""
+""" + _lang_instruction(lang)
                 }]
             )
             text_parts = [block.text for block in message.content if block.type == "text"]
@@ -338,7 +361,7 @@ Do not suggest adding experience, skills, or metrics that are not already there.
         except Exception as e:
             return f"Error generating resume alignment suggestions: {str(e)}"
 
-    def generate_portfolio_content(self, project):
+    def generate_portfolio_content(self, project, lang="en"):
         """Turn raw project notes into a polished portfolio write-up"""
         try:
             message = self.client.messages.create(
@@ -365,7 +388,7 @@ Format as:
 - [achievement/impact-oriented bullet 2]
 - [achievement/impact-oriented bullet 3]
 **Tags:** [comma-separated tech/skill tags suitable for a portfolio site]
-"""
+""" + _lang_instruction(lang)
                 }]
             )
             return message.content[0].text

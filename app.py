@@ -2,6 +2,7 @@ import os
 import re
 import streamlit as st
 import streamlit_authenticator as stauth
+from streamlit_authenticator.utilities.validator import Validator as _AuthValidator
 import altair as alt
 import pandas as pd
 from database import Database
@@ -18,6 +19,231 @@ st.set_page_config(
 
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
+
+if "lang" not in st.session_state:
+    st.session_state.lang = "ko"
+
+# ===== Translations =====
+# Only static app chrome lives here. AI-generated text (recommendations,
+# cover letters, analysis) is translated separately by asking the model to
+# respond in the selected language — see ai_helper.py.
+T = {
+    "landing_title_1": {"ko": "취업 준비,", "en": "Your job search,"},
+    "landing_title_2": {"ko": "이제 한 곳에서.", "en": "finally organized."},
+    "landing_lede": {"ko": "지원 현황을 한눈에 관리하고, 나에게 맞는 공고를 추천받으세요.",
+                      "en": "Track every application. Get matched to roles that actually fit."},
+    "landing_cta": {"ko": "시작하기", "en": "Get Started"},
+    "landing_caption": {"ko": "실제 채용공고 확인 기반 매칭, 내 이력서로 작성하는 자소서.",
+                         "en": "Matches checked against real postings. Cover letters written from your own resume."},
+
+    "auth_title": {"ko": "Job Platform", "en": "Job Platform"},
+    "auth_subtitle": {"ko": "로그인하고 지원 현황을 관리하고, AI 맞춤 추천과 포트폴리오까지 만들어보세요",
+                       "en": "Sign in to track applications, get AI-matched recommendations, and build your portfolio"},
+    "auth_error": {"ko": "아이디 또는 비밀번호가 올바르지 않습니다", "en": "Username or password is incorrect"},
+    "auth_register_expander": {"ko": "처음이신가요? 계정 만들기", "en": "New here? Create an account"},
+    "auth_register_success": {"ko": "{name}님 계정이 생성되었습니다 — 위에서 로그인해주세요",
+                               "en": "Account created for {name} — log in above"},
+
+    "sidebar_brand_name": {"ko": "Job Platform", "en": "Job Platform"},
+    "sidebar_brand_sub": {"ko": "커리어 인텔리전스", "en": "CAREER INTELLIGENCE"},
+    "sidebar_signed_in": {"ko": "로그인 계정", "en": "Signed in as"},
+    "sidebar_setup_required": {"ko": "설정 필요", "en": "Setup required"},
+    "sidebar_setup_desc": {"ko": "프로필을 완성해주세요", "en": "Complete your profile"},
+    "nav_profile": {"ko": "프로필 설정", "en": "Profile Setup"},
+    "nav_discover": {"ko": "채용 탐색", "en": "Discover Jobs"},
+    "nav_applications": {"ko": "내 지원 현황", "en": "My Applications"},
+    "nav_portfolio": {"ko": "포트폴리오", "en": "Portfolio"},
+    "nav_analytics": {"ko": "분석", "en": "Analytics"},
+    "sidebar_stat_applications": {"ko": "지원 건수", "en": "Applications"},
+    "sidebar_stat_interviews": {"ko": "면접", "en": "Interviews"},
+    "dark_mode": {"ko": "다크 모드", "en": "Dark Mode"},
+    "log_out": {"ko": "로그아웃", "en": "Log Out"},
+
+    "profile_page_title": {"ko": "프로필 설정", "en": "Profile Setup"},
+    "profile_page_sub": {"ko": "맞춤 추천을 받으려면 프로필을 설정하세요",
+                          "en": "Set up your profile to get personalized job recommendations"},
+    "profile_section_basic": {"ko": "기본 정보", "en": "Basic Information"},
+    "profile_section_skills": {"ko": "기술 스택", "en": "Technical Skills"},
+    "profile_section_targets": {"ko": "희망 직무", "en": "Target Positions"},
+    "profile_section_resume": {"ko": "이력서", "en": "Resume"},
+    "profile_full_name": {"ko": "이름", "en": "Full Name"},
+    "profile_education": {"ko": "학력", "en": "Education"},
+    "profile_experience": {"ko": "경력", "en": "Experience Level"},
+    "profile_location": {"ko": "희망 지역", "en": "Target Location"},
+    "profile_skills_hint": {"ko": "보유 기술을 쉼표로 구분해서 입력하세요", "en": "Enter your skills (comma-separated)"},
+    "profile_skills": {"ko": "기술 스택", "en": "Skills"},
+    "profile_roles": {"ko": "희망 직무", "en": "Roles of Interest"},
+    "profile_companies": {"ko": "관심 기업 (선택)", "en": "Companies of Interest (Optional)"},
+    "profile_resume_hint": {"ko": "이력서 원문을 붙여넣으세요 — 자소서와 맞춤 제안 생성에 사용됩니다",
+                             "en": "Paste your resume text — used to generate cover letters and tailored suggestions"},
+    "profile_resume_placeholder": {"ko": "이력서를 텍스트로 붙여넣으세요...", "en": "Paste your resume as plain text..."},
+    "profile_save": {"ko": "프로필 저장", "en": "Save Profile"},
+    "profile_saved": {"ko": "프로필이 저장되었습니다", "en": "Profile saved successfully"},
+
+    "discover_page_title": {"ko": "채용 탐색", "en": "Discover Jobs"},
+    "discover_page_sub": {"ko": "내 프로필에 맞춘 AI 채용 추천", "en": "AI-powered job recommendations tailored to your profile"},
+    "discover_need_profile": {"ko": "맞춤 추천을 받으려면 먼저 프로필을 완성해주세요",
+                               "en": "Complete your profile first to get personalized recommendations"},
+    "discover_need_profile_hint": {"ko": "사이드바에서 '프로필 설정'으로 이동하세요",
+                                    "en": "Use the sidebar to navigate to 'Profile Setup'"},
+    "ai_unavailable": {"ko": "AI 기능을 사용할 수 없습니다. API 설정을 확인하세요.",
+                        "en": "AI features unavailable. Check API configuration."},
+    "discover_profile_summary": {"ko": "내 프로필 요약", "en": "Your Profile Summary"},
+    "discover_get_recs": {"ko": "AI 추천 받기", "en": "Get AI Recommendations"},
+    "loading_analyzing_profile": {"ko": "프로필을 분석하고 있습니다…", "en": "Analyzing your profile…"},
+    "loading_scanning_roles": {"ko": "공고를 검색하고 있습니다…", "en": "Scanning open roles…"},
+    "loading_matching_skills": {"ko": "기술 스택을 매칭하고 있습니다…", "en": "Matching your skills…"},
+    "loading_ranking_fits": {"ko": "최적의 매칭을 정리하고 있습니다…", "en": "Ranking best fits…"},
+    "loading_reading_jd": {"ko": "채용공고를 읽고 있습니다…", "en": "Reading the job description…"},
+    "loading_comparing_profile": {"ko": "프로필과 비교하고 있습니다…", "en": "Comparing against your profile…"},
+    "loading_looking_up_culture": {"ko": "기업 문화를 검색하고 있습니다…", "en": "Looking up company values…"},
+    "loading_aligning_resume": {"ko": "이력서를 정리하고 있습니다…", "en": "Aligning your resume…"},
+    "loading_drafting_letter": {"ko": "자소서를 작성하고 있습니다…", "en": "Drafting your cover letter…"},
+    "loading_comparing_role": {"ko": "이력서를 채용공고와 비교하고 있습니다…", "en": "Comparing your resume to this role…"},
+    "loading_scoring_resume": {"ko": "채용공고 대비 이력서 점수를 매기고 있습니다…", "en": "Scoring your resume against this posting…"},
+    "loading_extracting_keywords": {"ko": "핵심 키워드를 추출하고 있습니다…", "en": "Extracting keywords…"},
+    "loading_writing_portfolio": {"ko": "포트폴리오 항목을 작성하고 있습니다…", "en": "Writing your portfolio entry…"},
+    "profile_summary_name": {"ko": "이름", "en": "Name"},
+    "profile_summary_education": {"ko": "학력", "en": "Education"},
+    "profile_summary_experience": {"ko": "경력", "en": "Experience"},
+    "profile_summary_location": {"ko": "희망 지역", "en": "Location"},
+    "profile_summary_skills": {"ko": "기술", "en": "Skills"},
+    "profile_summary_more": {"ko": "... 외 {count}개", "en": "... and {count} more"},
+    "discover_recommended": {"ko": "추천 기업", "en": "Recommended Companies for You"},
+    "tier_strong": {"ko": "매우 적합", "en": "Strong fit"},
+    "tier_good": {"ko": "적합", "en": "Good fit"},
+    "tier_possible": {"ko": "다소 적합", "en": "Possible fit"},
+    "tier_na": {"ko": "점수 확인 불가", "en": "Score unavailable"},
+    "posting_found": {"ko": "🔗 공고 확인됨", "en": "🔗 Posting found"},
+    "posting_unconfirmed": {"ko": "공고 미확인", "en": "Posting not confirmed"},
+    "why_good_match": {"ko": "매칭 이유", "en": "Why Good Match"},
+    "view_details": {"ko": "상세 보기", "en": "View Details"},
+    "requirements": {"ko": "자격 요건", "en": "Requirements"},
+    "culture_notes": {"ko": "기업 문화", "en": "Culture Notes"},
+    "gaps": {"ko": "부족한 점", "en": "Gaps"},
+    "add_to_applications": {"ko": "지원 목록에 추가", "en": "Add to Applications"},
+    "added_to_applications": {"ko": "{name}을(를) 지원 목록에 추가했습니다", "en": "Added {name} to your applications"},
+    "view_detailed_analysis": {"ko": "상세 분석 보기", "en": "View Detailed Analysis"},
+    "paste_jd_for_analysis": {"ko": "상세 분석을 위해 채용공고를 붙여넣으세요", "en": "Paste Job Description for detailed analysis"},
+    "paste_jd_placeholder": {"ko": "실제 채용공고를 붙여넣으세요...", "en": "Paste the actual job description here..."},
+    "generate_analysis": {"ko": "분석 생성", "en": "Generate Analysis"},
+    "please_paste_jd": {"ko": "채용공고를 붙여넣어주세요", "en": "Please paste a job description"},
+    "added_to_applications_simple": {"ko": "지원 목록에 추가했습니다", "en": "Added to applications"},
+    "analysis_results": {"ko": "분석 결과", "en": "Analysis Results"},
+    "learning_roadmap": {"ko": "학습 로드맵", "en": "Learning Roadmap"},
+    "strengthen_resume_btn": {"ko": "이 기업 문화에 맞춰 이력서 보강하기", "en": "Strengthen Resume for This Company's Culture"},
+    "add_resume_first": {"ko": "프로필 설정에서 먼저 이력서를 추가해주세요", "en": "Add a resume in Profile Setup first"},
+    "resume_alignment_suggestions": {"ko": "이력서 보강 제안", "en": "Resume Alignment Suggestions"},
+    "load_more": {"ko": "5개 더 보기", "en": "Load More (5 more)"},
+    "showing_of_companies": {"ko": "{shown}개 / 총 {total}개 기업", "en": "Showing {shown} of {total} companies"},
+
+    "apps_page_title": {"ko": "내 지원 현황", "en": "My Applications"},
+    "apps_page_sub": {"ko": "지원 현황을 추적하고 관리하세요", "en": "Track and manage your job applications"},
+    "stat_total": {"ko": "전체", "en": "Total"},
+    "stat_applied": {"ko": "지원함", "en": "Applied"},
+    "stat_interviews": {"ko": "면접", "en": "Interviews"},
+    "stat_offers": {"ko": "합격", "en": "Offers"},
+    "add_new_application": {"ko": "새 지원 추가", "en": "Add New Application"},
+    "added_company": {"ko": "{name} 추가되었습니다", "en": "Added {name}"},
+    "company_name": {"ko": "회사명", "en": "Company Name"},
+    "position": {"ko": "직무", "en": "Position"},
+    "job_url": {"ko": "채용공고 링크", "en": "Job URL"},
+    "status": {"ko": "상태", "en": "Status"},
+    "job_description": {"ko": "채용공고 내용", "en": "Job Description"},
+    "paste_jd_short": {"ko": "채용공고를 붙여넣으세요", "en": "Paste job description"},
+    "save": {"ko": "저장", "en": "Save"},
+    "fill_required_fields": {"ko": "필수 항목을 입력해주세요", "en": "Fill in required fields"},
+    "no_applications_yet": {"ko": "아직 지원한 곳이 없습니다", "en": "No applications yet"},
+    "applications_count": {"ko": "지원 현황 ({count}건)", "en": "Applications ({count})"},
+    "search": {"ko": "검색", "en": "Search"},
+    "filter": {"ko": "필터", "en": "Filter"},
+    "filter_all": {"ko": "전체", "en": "All"},
+    "applied_on": {"ko": "지원일", "en": "Applied"},
+    "job_posting_link": {"ko": "채용공고 보기", "en": "Job Posting"},
+    "ai_analysis": {"ko": "AI 분석", "en": "AI Analysis"},
+    "update": {"ko": "상태 변경", "en": "Update"},
+    "delete": {"ko": "삭제", "en": "Delete"},
+    "updated": {"ko": "변경되었습니다", "en": "Updated"},
+    "deleted": {"ko": "삭제되었습니다", "en": "Deleted"},
+    "ai_writing_tools": {"ko": "AI 작성 도구", "en": "AI Writing Tools"},
+    "generate_cover_letter": {"ko": "자소서 생성", "en": "Generate Cover Letter"},
+    "improve_resume": {"ko": "이력서 개선 제안", "en": "Improve My Resume"},
+    "check_match_score": {"ko": "매칭 점수 확인", "en": "Check Match Score"},
+    "add_resume_warning": {"ko": "프로필 설정에서 이력서를 먼저 추가해주세요", "en": "Add your resume in Profile Setup first"},
+    "no_jd_warning": {"ko": "이 지원 건에는 저장된 채용공고가 없습니다", "en": "This application has no job description saved"},
+    "cover_letter_heading": {"ko": "자기소개서", "en": "Cover Letter"},
+    "resume_suggestions_heading": {"ko": "이력서 개선 제안", "en": "Resume Suggestions"},
+    "match_score_heading": {"ko": "매칭 점수", "en": "Match Score"},
+
+    "portfolio_page_title": {"ko": "포트폴리오", "en": "Portfolio"},
+    "portfolio_page_sub": {"ko": "프로젝트를 AI가 다듬은 포트폴리오 항목으로 만들어보세요",
+                            "en": "Turn your projects into polished, AI-written portfolio entries"},
+    "portfolio_stat_projects": {"ko": "프로젝트", "en": "Projects"},
+    "portfolio_stat_written": {"ko": "작성 완료", "en": "Written"},
+    "portfolio_stat_drafts": {"ko": "초안", "en": "Drafts"},
+    "add_new_project": {"ko": "새 프로젝트 추가", "en": "Add New Project"},
+    "project_title": {"ko": "프로젝트 제목", "en": "Project Title"},
+    "your_role": {"ko": "맡은 역할", "en": "Your Role"},
+    "tech_stack": {"ko": "기술 스택", "en": "Tech Stack"},
+    "project_desc_label": {"ko": "무엇을 만들었고 왜 만들었나요? (초안 메모여도 괜찮습니다)",
+                            "en": "What did you build and why? (raw notes are fine)"},
+    "project_outcome_label": {"ko": "성과 / 임팩트 (선택)", "en": "Outcome / Impact (optional)"},
+    "add_project": {"ko": "프로젝트 추가", "en": "Add Project"},
+    "title_desc_required": {"ko": "제목과 설명은 필수입니다", "en": "Title and description are required"},
+    "no_projects_yet": {"ko": "아직 프로젝트가 없습니다 — 위에서 추가해보세요", "en": "No projects yet — add one above"},
+    "projects_count": {"ko": "프로젝트 ({count}건)", "en": "Projects ({count})"},
+    "role_label": {"ko": "역할", "en": "Role"},
+    "notes_label": {"ko": "메모", "en": "Notes"},
+    "outcome_label": {"ko": "성과", "en": "Outcome"},
+    "regenerate": {"ko": "다시 생성", "en": "Regenerate"},
+    "generate_portfolio_entry": {"ko": "포트폴리오 항목 생성", "en": "Generate Portfolio Entry"},
+    "portfolio_entry_heading": {"ko": "포트폴리오 항목", "en": "Portfolio Entry"},
+
+    "analytics_page_title": {"ko": "분석", "en": "Analytics"},
+    "analytics_page_sub": {"ko": "지원 현황 인사이트", "en": "Job search insights"},
+    "no_data_yet": {"ko": "아직 데이터가 없습니다", "en": "No data yet"},
+    "status_distribution": {"ko": "상태별 분포", "en": "Status Distribution"},
+    "recent_activity": {"ko": "최근 활동", "en": "Recent Activity"},
+    "timeline_meta": {"ko": "{status} · {date}", "en": "{status} on {date}"},
+}
+
+
+def t(key):
+    return T[key][st.session_state.lang]
+
+
+STATUS_VALUES = ["Applied", "Interview", "Offer", "Rejected"]
+STATUS_LABELS = {
+    "ko": {"Applied": "지원함", "Interview": "면접", "Offer": "합격", "Rejected": "불합격"},
+    "en": {"Applied": "Applied", "Interview": "Interview", "Offer": "Offer", "Rejected": "Rejected"},
+}
+
+
+def status_label(value):
+    return STATUS_LABELS[st.session_state.lang].get(value, value)
+
+
+EXPERIENCE_VALUES = ["New Graduate", "0-1 years", "1-3 years", "3-5 years", "5+ years"]
+EXPERIENCE_LABELS = {
+    "ko": {"New Graduate": "신입", "0-1 years": "0-1년", "1-3 years": "1-3년",
+           "3-5 years": "3-5년", "5+ years": "5년 이상"},
+    "en": {v: v for v in EXPERIENCE_VALUES},
+}
+
+
+def experience_label(value):
+    return EXPERIENCE_LABELS[st.session_state.lang].get(value, value)
+
+
+def render_lang_toggle(key):
+    current = st.session_state.lang
+    choice = st.radio(
+        "Language", ["한국어", "English"],
+        index=0 if current == "ko" else 1,
+        horizontal=True, label_visibility="collapsed", key=key,
+    )
+    st.session_state.lang = "ko" if choice == "한국어" else "en"
+
 
 if st.session_state.dark_mode:
     palette = {
@@ -660,30 +886,61 @@ def render_landing_page():
             border-color: var(--text-muted);
             color: var(--bg);
         }
+        .st-key-landing_lang { max-width: 200px; margin: 0 auto; }
         </style>
+    """, unsafe_allow_html=True)
+
+    col_a, col_b, col_c = st.columns([1, 1, 1])
+    with col_b:
+        render_lang_toggle("landing_lang")
+
+    st.markdown(f"""
         <div class="landing">
-            <h1>Your job search,<br/>finally organized.</h1>
-            <p class="lede">Track every application. Get matched to roles that actually fit.</p>
+            <h1>{t('landing_title_1')}<br/>{t('landing_title_2')}</h1>
+            <p class="lede">{t('landing_lede')}</p>
         </div>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        if st.button("Get Started", key="landing_cta", type="primary", use_container_width=True):
+        if st.button(t('landing_cta'), key="landing_cta", type="primary", use_container_width=True):
             st.session_state.show_landing = False
             st.rerun()
 
     st.markdown(
-        '<p class="landing-caption">Matches checked against real postings. '
-        'Cover letters written from your own resume.</p>',
+        f'<p class="landing-caption">{t("landing_caption")}</p>',
         unsafe_allow_html=True,
     )
 
 
 # ===== AUTH GATE =====
+LOGIN_FIELDS = {
+    "ko": {"Form name": "로그인", "Username": "아이디", "Password": "비밀번호", "Login": "로그인"},
+    "en": {"Form name": "Login", "Username": "Username", "Password": "Password", "Login": "Login"},
+}
+REGISTER_FIELDS = {
+    "ko": {"Form name": "계정 만들기", "First name": "이름", "Last name": "성",
+           "Email": "이메일", "Username": "아이디", "Password": "비밀번호",
+           "Repeat password": "비밀번호 확인", "Password hint": "비밀번호 힌트", "Register": "가입하기"},
+    "en": {"Form name": "Register user", "First name": "First name", "Last name": "Last name",
+           "Email": "Email", "Username": "Username", "Password": "Password",
+           "Repeat password": "Repeat password", "Password hint": "Password hint", "Register": "Register"},
+}
+
+class _KoreanNameValidator(_AuthValidator):
+    """The library's default name pattern requires 2+ characters, which
+    rejects one-syllable Korean surnames (김, 이, 박, ...). Same character
+    set, minimum length of 1 instead."""
+    def validate_name(self, name):
+        pattern = r"^[A-Za-zÀ-ɏͰ-῿Ⰰ-퟿一-鿿' .-]{1,100}$"
+        return bool(re.match(pattern, name, re.UNICODE))
+
+
 credentials = {'usernames': db.get_all_users()}
 cookie_key = os.getenv("AUTH_COOKIE_KEY", "dev-only-insecure-key-set-AUTH_COOKIE_KEY-in-production")
-authenticator = stauth.Authenticate(credentials, "job_platform_auth", cookie_key, 30)
+authenticator = stauth.Authenticate(
+    credentials, "job_platform_auth", cookie_key, 30, validator=_KoreanNameValidator()
+)
 
 authenticator.login(location='unrendered')
 auth_status = st.session_state.get("authentication_status")
@@ -694,19 +951,25 @@ if not auth_status:
         render_landing_page()
         st.stop()
 
-    page_header("Job Platform", "Sign in to track applications, get AI-matched recommendations, and build your portfolio")
+    col_a, col_b, col_c = st.columns([1, 1, 1])
+    with col_b:
+        render_lang_toggle("auth_lang")
 
-    authenticator.login(clear_on_submit=True)
+    page_header(t('auth_title'), t('auth_subtitle'))
+
+    authenticator.login(clear_on_submit=True, fields=LOGIN_FIELDS[st.session_state.lang])
     auth_status = st.session_state.get("authentication_status")
     if auth_status is False:
-        st.error("Username or password is incorrect")
+        st.error(t('auth_error'))
 
-    with st.expander("New here? Create an account"):
+    with st.expander(t('auth_register_expander')):
         try:
-            email, new_username, name = authenticator.register_user(captcha=False)
+            email, new_username, name = authenticator.register_user(
+                captcha=False, fields=REGISTER_FIELDS[st.session_state.lang]
+            )
             if email:
                 db.create_user(new_username, credentials['usernames'][new_username])
-                success_check(f"Account created for {name} — log in above")
+                success_check(t('auth_register_success').format(name=name))
         except Exception as e:
             st.error(str(e))
 
@@ -715,13 +978,21 @@ if not auth_status:
 user_id = st.session_state["username"]
 
 # Sidebar
+NAV_PAGES = ["Profile Setup", "Discover Jobs", "My Applications", "Portfolio", "Analytics"]
+NAV_KEYS = {
+    "Profile Setup": "nav_profile", "Discover Jobs": "nav_discover",
+    "My Applications": "nav_applications", "Portfolio": "nav_portfolio", "Analytics": "nav_analytics",
+}
+
 with st.sidebar:
-    st.markdown("""
+    render_lang_toggle("sidebar_lang")
+
+    st.markdown(f"""
         <div class="brand">
             <span class="brand-mark"></span>
             <div>
-                <div class="brand-name">Job Platform</div>
-                <div class="brand-sub">CAREER INTELLIGENCE</div>
+                <div class="brand-name">{t('sidebar_brand_name')}</div>
+                <div class="brand-sub">{t('sidebar_brand_sub')}</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -730,15 +1001,15 @@ with st.sidebar:
     if profile:
         st.markdown(f"""
             <div class="profile-chip">
-                <div class="label">Signed in as</div>
+                <div class="label">{t('sidebar_signed_in')}</div>
                 <div class="value">{profile.get('name', 'User')}</div>
             </div>
         """, unsafe_allow_html=True)
     else:
-        st.markdown("""
+        st.markdown(f"""
             <div class="profile-chip">
-                <div class="label">Setup required</div>
-                <div class="value">Complete your profile</div>
+                <div class="label">{t('sidebar_setup_required')}</div>
+                <div class="value">{t('sidebar_setup_desc')}</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -746,102 +1017,102 @@ with st.sidebar:
 
     page = st.radio(
         "Navigation",
-        ["Profile Setup", "Discover Jobs", "My Applications", "Portfolio", "Analytics"],
+        NAV_PAGES,
+        format_func=lambda p: t(NAV_KEYS[p]),
         label_visibility="collapsed"
     )
 
     st.markdown("---")
     stats = db.get_statistics(user_id)
     col1, col2 = st.columns(2)
-    col1.metric("Applications", stats['total'])
-    col2.metric("Interviews", stats['interview'])
+    col1.metric(t('sidebar_stat_applications'), stats['total'])
+    col2.metric(t('sidebar_stat_interviews'), stats['interview'])
 
     st.markdown("---")
-    st.toggle("Dark Mode", key="dark_mode")
-    authenticator.logout("Log Out", "sidebar", use_container_width=True)
+    st.toggle(t('dark_mode'), key="dark_mode")
+    authenticator.logout(t('log_out'), "sidebar", use_container_width=True)
 
     st.markdown('<div class="sidebar-footer">Built by Sunghoon Lee</div>', unsafe_allow_html=True)
 
 # ===== PROFILE SETUP PAGE =====
 if page == "Profile Setup":
-    page_header("Profile Setup", "Set up your profile to get personalized job recommendations")
-    
+    page_header(t('profile_page_title'), t('profile_page_sub'))
+
     current_profile = db.get_profile(user_id) or {}
-    
+
     with st.form("profile_form"):
-        section_heading("Basic Information")
-        
+        section_heading(t('profile_section_basic'))
+
         col1, col2 = st.columns(2)
         with col1:
             name = st.text_input(
-                "Full Name",
+                t('profile_full_name'),
                 value=current_profile.get('name', ''),
                 placeholder="Sunghoon Lee"
             )
             education = st.text_input(
-                "Education",
+                t('profile_education'),
                 value=current_profile.get('education', ''),
                 placeholder="B.S. Computer Science, UW-Madison"
             )
-        
+
         with col2:
             experience = st.selectbox(
-                "Experience Level",
-                ["New Graduate", "0-1 years", "1-3 years", "3-5 years", "5+ years"],
-                index=["New Graduate", "0-1 years", "1-3 years", "3-5 years", "5+ years"].index(
-                    current_profile.get('experience', 'New Graduate')
-                )
+                t('profile_experience'),
+                EXPERIENCE_VALUES,
+                index=EXPERIENCE_VALUES.index(current_profile.get('experience', 'New Graduate')),
+                format_func=experience_label,
             )
             target_location = st.text_input(
-                "Target Location",
+                t('profile_location'),
                 value=current_profile.get('target_location', ''),
                 placeholder="Seoul, Korea / Bay Area, USA"
             )
-        
+
         st.markdown("---")
-        section_heading("Technical Skills")
-        st.markdown("Enter your skills (comma-separated)")
-        
+        section_heading(t('profile_section_skills'))
+        st.markdown(t('profile_skills_hint'))
+
         skills_input = st.text_area(
-            "Skills",
+            t('profile_skills'),
             value=", ".join(current_profile.get('skills', [])),
             placeholder="Python, Java, React, Node.js, AWS, Machine Learning",
             height=100
         )
-        
+
         st.markdown("---")
-        section_heading("Target Positions")
-        
+        section_heading(t('profile_section_targets'))
+
         col1, col2 = st.columns(2)
         with col1:
             target_roles = st.text_area(
-                "Roles of Interest",
+                t('profile_roles'),
                 value=", ".join(current_profile.get('target_roles', [])),
                 placeholder="Software Engineer, Data Scientist, Backend Developer",
                 height=100
             )
-        
+
         with col2:
             target_companies = st.text_area(
-                "Companies of Interest (Optional)",
+                t('profile_companies'),
                 value=", ".join(current_profile.get('target_companies', [])),
                 placeholder="Samsung, SK Hynix, Google, Naver",
                 height=100
             )
 
         st.markdown("---")
-        section_heading("Resume")
-        st.markdown("Paste your resume text — used to generate cover letters and tailored suggestions")
+        section_heading(t('profile_section_resume'))
+        st.markdown(t('profile_resume_hint'))
 
         resume_text = st.text_area(
             "Resume",
             value=current_profile.get('resume', ''),
-            placeholder="Paste your resume as plain text...",
+            placeholder=t('profile_resume_placeholder'),
             height=200,
             label_visibility="collapsed"
         )
 
-        submitted = st.form_submit_button("Save Profile", type="primary")
+        submitted = st.form_submit_button(t('profile_save'), type="primary")
 
         if submitted:
             profile_data = {
@@ -854,62 +1125,62 @@ if page == "Profile Setup":
                 'target_companies': [c.strip() for c in target_companies.split(',') if c.strip()],
                 'resume': resume_text
             }
-            
+
             db.save_profile(user_id, profile_data)
-            st.success("Profile saved successfully")
+            st.success(t('profile_saved'))
             st.rerun()
 
 # ===== DISCOVER JOBS PAGE =====
 elif page == "Discover Jobs":
-    page_header("Discover Jobs", "AI-powered job recommendations tailored to your profile")
-    
+    page_header(t('discover_page_title'), t('discover_page_sub'))
+
     profile = db.get_profile(user_id)
-    
+
     if not profile:
-        st.warning("Complete your profile first to get personalized recommendations")
-        st.info("Use the sidebar to navigate to 'Profile Setup'")
+        st.warning(t('discover_need_profile'))
+        st.info(t('discover_need_profile_hint'))
         st.stop()
-    
+
     if not st.session_state.ai_available:
-        st.error("AI features unavailable. Check API configuration.")
+        st.error(t('ai_unavailable'))
         st.stop()
-    
+
     # Profile summary
-    with st.expander("Your Profile Summary", expanded=False):
+    with st.expander(t('discover_profile_summary'), expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            st.write(f"**Name:** {profile.get('name', 'N/A')}")
-            st.write(f"**Education:** {profile.get('education', 'N/A')}")
-            st.write(f"**Experience:** {profile.get('experience', 'N/A')}")
+            st.write(f"**{t('profile_summary_name')}:** {profile.get('name', 'N/A')}")
+            st.write(f"**{t('profile_summary_education')}:** {profile.get('education', 'N/A')}")
+            st.write(f"**{t('profile_summary_experience')}:** {experience_label(profile.get('experience', 'N/A'))}")
         with col2:
-            st.write(f"**Location:** {profile.get('target_location', 'N/A')}")
-            st.write(f"**Skills:** {', '.join(profile.get('skills', [])[:5])}")
+            st.write(f"**{t('profile_summary_location')}:** {profile.get('target_location', 'N/A')}")
+            st.write(f"**{t('profile_summary_skills')}:** {', '.join(profile.get('skills', [])[:5])}")
             if len(profile.get('skills', [])) > 5:
-                st.write(f"... and {len(profile.get('skills', [])) - 5} more")
-    
+                st.write(t('profile_summary_more').format(count=len(profile.get('skills', [])) - 5))
+
     st.markdown("---")
-    
+
     # Get recommendations button
     col1, col2, col3 = st.columns([2, 1, 2])
     with col2:
-        get_recs = st.button("Get AI Recommendations", key="get_recs_btn", type="primary", use_container_width=True)
+        get_recs = st.button(t('discover_get_recs'), key="get_recs_btn", type="primary", use_container_width=True)
 
     if get_recs:
         loading = show_ai_loading([
-            "Analyzing your profile…",
-            "Scanning open roles…",
-            "Matching your skills…",
-            "Ranking best fits…",
+            t('loading_analyzing_profile'),
+            t('loading_scanning_roles'),
+            t('loading_matching_skills'),
+            t('loading_ranking_fits'),
         ])
-        recommendations = ai.recommend_companies(profile)
+        recommendations = ai.recommend_companies(profile, lang=st.session_state.lang)
         loading.empty()
         st.session_state.recommendations = recommendations
         st.session_state.show_count = 10
-    
+
     # Display recommendations if they exist
     if 'recommendations' in st.session_state:
         st.markdown("---")
-        section_heading("Recommended Companies for You")
+        section_heading(t('discover_recommended'))
         
         # Parse recommendations
         rec_text = st.session_state.recommendations
@@ -964,13 +1235,13 @@ elif page == "Discover Jobs":
             score_num = int(score_digits.group()) if score_digits else None
 
             if score_num is None:
-                tier_color, tier_label = "var(--text-muted)", "Score unavailable"
+                tier_color, tier_label = "var(--text-muted)", t('tier_na')
             elif score_num >= 80:
-                tier_color, tier_label = "var(--success)", "Strong fit"
+                tier_color, tier_label = "var(--success)", t('tier_strong')
             elif score_num >= 60:
-                tier_color, tier_label = "var(--warning)", "Good fit"
+                tier_color, tier_label = "var(--warning)", t('tier_good')
             else:
-                tier_color, tier_label = "var(--danger)", "Possible fit"
+                tier_color, tier_label = "var(--danger)", t('tier_possible')
 
             ring_circumference = 150.8
             ring_offset = ring_circumference * (1 - max(0, min(score_num or 0, 100)) / 100)
@@ -980,9 +1251,9 @@ elif page == "Discover Jobs":
             posting_status = company_info.get('posting_status', '')
             posting_match = re.match(r'Found:\s*(\S+)', posting_status)
             if posting_match:
-                posting_badge = f'<a href="{posting_match.group(1)}" target="_blank" class="posting-badge found">🔗 Posting found</a>'
+                posting_badge = f'<a href="{posting_match.group(1)}" target="_blank" class="posting-badge found">{t("posting_found")}</a>'
             else:
-                posting_badge = '<span class="posting-badge unconfirmed">Posting not confirmed</span>'
+                posting_badge = f'<span class="posting-badge unconfirmed">{t("posting_unconfirmed")}</span>'
 
             # Company header card with an animated circular score ring
             st.markdown(f"""
@@ -1008,17 +1279,17 @@ elif page == "Discover Jobs":
             col1, col2 = st.columns([3, 1])
 
             with col1:
-                st.write(f"**Why Good Match:** {company_info.get('match', 'N/A')}")
+                st.write(f"**{t('why_good_match')}:** {company_info.get('match', 'N/A')}")
 
-                with st.expander("View Details"):
-                    st.write(f"**Requirements:** {company_info.get('requirements', 'N/A')}")
-                    st.write(f"**Culture Notes:** {company_info.get('culture_notes', 'Not confirmed via search')}")
-                    st.write(f"**Gaps:** {company_info.get('gaps', 'N/A')}")
-            
+                with st.expander(t('view_details')):
+                    st.write(f"**{t('requirements')}:** {company_info.get('requirements', 'N/A')}")
+                    st.write(f"**{t('culture_notes')}:** {company_info.get('culture_notes', 'Not confirmed via search')}")
+                    st.write(f"**{t('gaps')}:** {company_info.get('gaps', 'N/A')}")
+
             with col2:
                 st.markdown("<br>", unsafe_allow_html=True)
-                
-                if st.button("Add to Applications", key=f"add_{idx}", type="primary", use_container_width=True):
+
+                if st.button(t('add_to_applications'), key=f"add_{idx}", type="primary", use_container_width=True):
                     new_app = {
                         'company': company_info.get('name', 'Unknown'),
                         'position': company_info.get('position', 'N/A'),
@@ -1028,30 +1299,31 @@ elif page == "Discover Jobs":
                         'keywords': f"Match: {company_info.get('match')}"
                     }
                     db.add_application(user_id, new_app)
-                    success_check(f"Added {company_info.get('name')} to your applications")
-            
+                    success_check(t('added_to_applications').format(name=company_info.get('name')))
+
             # Detailed Analysis Section
-            with st.expander("View Detailed Analysis"):
+            with st.expander(t('view_detailed_analysis')):
                 job_desc = st.text_area(
-                    "Paste Job Description for detailed analysis",
+                    t('paste_jd_for_analysis'),
                     height=200,
-                    placeholder="Paste the actual job description here...",
+                    placeholder=t('paste_jd_placeholder'),
                     key=f"job_desc_{idx}"
                 )
-                
+
                 col_a, col_b = st.columns([1, 1])
-                
+
                 with col_a:
-                    if st.button("Generate Analysis", type="primary", key=f"gen_{idx}", use_container_width=True):
+                    if st.button(t('generate_analysis'), type="primary", key=f"gen_{idx}", use_container_width=True):
                         if job_desc:
                             loading = show_ai_loading(
-                                ["Reading the job description…", "Comparing against your profile…"],
+                                [t('loading_reading_jd'), t('loading_comparing_profile')],
                                 show_skeleton=False,
                             )
                             detailed_analysis = ai.analyze_company_fit(
                                 profile,
                                 company_info.get('name'),
-                                job_desc
+                                job_desc,
+                                lang=st.session_state.lang,
                             )
                             st.session_state[f'analysis_{idx}'] = detailed_analysis
 
@@ -1060,16 +1332,17 @@ elif page == "Discover Jobs":
                                 target_skills = [s.strip() for s in gaps_text.split(',')]
                                 roadmap = ai.generate_learning_roadmap(
                                     profile.get('skills', []),
-                                    target_skills
+                                    target_skills,
+                                    lang=st.session_state.lang,
                                 )
                                 st.session_state[f'roadmap_{idx}'] = roadmap
                             loading.empty()
                             st.rerun()
                         else:
-                            st.warning("Please paste a job description")
-                
+                            st.warning(t('please_paste_jd'))
+
                 with col_b:
-                    if st.button("Add to Applications", key=f"add_detail_{idx}", use_container_width=True):
+                    if st.button(t('add_to_applications'), key=f"add_detail_{idx}", use_container_width=True):
                         new_app = {
                             'company': company_info.get('name', 'Unknown'),
                             'position': company_info.get('position', 'N/A'),
@@ -1079,102 +1352,103 @@ elif page == "Discover Jobs":
                             'keywords': f"Match: {company_info.get('match')}"
                         }
                         db.add_application(user_id, new_app)
-                        success_check("Added to applications")
-                
+                        success_check(t('added_to_applications_simple'))
+
                 if f'analysis_{idx}' in st.session_state:
                     st.markdown("---")
-                    st.markdown("#### Analysis Results")
+                    st.markdown(f"#### {t('analysis_results')}")
                     st.markdown(st.session_state[f'analysis_{idx}'])
-                
+
                 if f'roadmap_{idx}' in st.session_state:
                     st.markdown("---")
-                    st.markdown("#### Learning Roadmap")
+                    st.markdown(f"#### {t('learning_roadmap')}")
                     st.markdown(st.session_state[f'roadmap_{idx}'])
 
                 if st.session_state.ai_available:
                     st.markdown("---")
-                    if st.button("Strengthen Resume for This Company's Culture", key=f"strengthen_{idx}", use_container_width=True):
+                    if st.button(t('strengthen_resume_btn'), key=f"strengthen_{idx}", use_container_width=True):
                         if profile.get('resume'):
                             loading = show_ai_loading(
-                                ["Looking up company values…", "Aligning your resume…"],
+                                [t('loading_looking_up_culture'), t('loading_aligning_resume')],
                                 show_skeleton=False,
                             )
                             alignment = ai.strengthen_resume_for_company(
                                 profile.get('resume', ''),
                                 company_info.get('name', ''),
-                                company_info.get('culture_notes', '')
+                                company_info.get('culture_notes', ''),
+                                lang=st.session_state.lang,
                             )
                             st.session_state[f'resume_align_{idx}'] = alignment
                             loading.empty()
                             st.rerun()
                         else:
-                            st.warning("Add a resume in Profile Setup first")
+                            st.warning(t('add_resume_first'))
 
                 if f'resume_align_{idx}' in st.session_state:
                     st.markdown("---")
-                    st.markdown("#### Resume Alignment Suggestions")
+                    st.markdown(f"#### {t('resume_alignment_suggestions')}")
                     st.markdown(st.session_state[f'resume_align_{idx}'])
 
             st.markdown("---")
-        
+
         # Load More button
         if displayed_count < len(all_companies) and displayed_count < 30:
             st.markdown("---")
             col1, col2, col3 = st.columns([2, 1, 2])
             with col2:
-                if st.button("Load More (5 more)", use_container_width=True):
+                if st.button(t('load_more'), use_container_width=True):
                     st.session_state.show_count = min(st.session_state.show_count + 5, 30)
                     st.rerun()
-        
+
         # Show count info
-        st.caption(f"Showing {displayed_count} of {min(len(all_companies), 30)} companies")
+        st.caption(t('showing_of_companies').format(shown=displayed_count, total=min(len(all_companies), 30)))
 
 # ===== MY APPLICATIONS PAGE =====
 elif page == "My Applications":
-    page_header("My Applications", "Track and manage your job applications")
+    page_header(t('apps_page_title'), t('apps_page_sub'))
 
     apps = db.get_all_applications(user_id)
     stats = db.get_statistics(user_id)
     profile = db.get_profile(user_id)
-    
+
     # Stats
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total", stats['total'])
-    col2.metric("Applied", stats['applied'])
-    col3.metric("Interviews", stats['interview'])
-    col4.metric("Offers", stats['offer'])
-    
+    col1.metric(t('stat_total'), stats['total'])
+    col2.metric(t('stat_applied'), stats['applied'])
+    col3.metric(t('stat_interviews'), stats['interview'])
+    col4.metric(t('stat_offers'), stats['offer'])
+
     st.markdown("---")
-    
+
     # Add new application
-    with st.expander("Add New Application"):
+    with st.expander(t('add_new_application')):
         with st.form("new_app"):
             col1, col2 = st.columns(2)
-            
+
             with col1:
-                company = st.text_input("Company Name", placeholder="Samsung Electronics")
-                position = st.text_input("Position", placeholder="Software Engineer")
-            
+                company = st.text_input(t('company_name'), placeholder="Samsung Electronics")
+                position = st.text_input(t('position'), placeholder="Software Engineer")
+
             with col2:
-                job_url = st.text_input("Job URL", placeholder="https://...")
-                status = st.selectbox("Status", ["Applied", "Interview", "Offer", "Rejected"])
-            
+                job_url = st.text_input(t('job_url'), placeholder="https://...")
+                status = st.selectbox(t('status'), STATUS_VALUES, format_func=status_label)
+
             job_desc = st.text_area(
-                "Job Description",
+                t('job_description'),
                 height=200,
-                placeholder="Paste job description"
+                placeholder=t('paste_jd_short')
             )
-            
+
             col1, col2 = st.columns([3, 1])
             with col2:
-                submit = st.form_submit_button("Save", type="primary", use_container_width=True)
-            
+                submit = st.form_submit_button(t('save'), type="primary", use_container_width=True)
+
             if submit:
                 if company and position and job_desc:
                     keywords = None
                     if st.session_state.ai_available:
-                        loading = show_ai_loading(["Extracting keywords…"], show_skeleton=False)
-                        keywords = ai.extract_keywords(job_desc)
+                        loading = show_ai_loading([t('loading_extracting_keywords')], show_skeleton=False)
+                        keywords = ai.extract_keywords(job_desc, lang=st.session_state.lang)
                         loading.empty()
 
                     db.add_application(user_id, {
@@ -1185,165 +1459,176 @@ elif page == "My Applications":
                         'status': status,
                         'keywords': keywords
                     })
-                    success_check(f"Added {company}")
+                    success_check(t('added_company').format(name=company))
                     st.rerun()
                 else:
-                    st.error("Fill in required fields")
-    
+                    st.error(t('fill_required_fields'))
+
     st.markdown("---")
-    
+
     # Applications list
     if len(apps) == 0:
-        st.info("No applications yet")
+        st.info(t('no_applications_yet'))
     else:
-        section_heading(f"Applications ({len(apps)})")
-        
+        section_heading(t('applications_count').format(count=len(apps)))
+
         col1, col2 = st.columns([3, 1])
         with col1:
-            search = st.text_input("Search", "")
+            search = st.text_input(t('search'), "")
         with col2:
-            filter_status = st.selectbox("Filter", ["All", "Applied", "Interview", "Offer", "Rejected"])
-        
+            filter_status = st.selectbox(
+                t('filter'), ["All"] + STATUS_VALUES,
+                format_func=lambda v: t('filter_all') if v == "All" else status_label(v),
+            )
+
         filtered = apps
         if search:
-            filtered = [a for a in filtered if search.lower() in a.get('company', '').lower() 
+            filtered = [a for a in filtered if search.lower() in a.get('company', '').lower()
                        or search.lower() in a.get('position', '').lower()]
         if filter_status != "All":
             filtered = [a for a in filtered if a.get('status') == filter_status]
-        
+
         for app in filtered:
-            with st.expander(f"{app.get('company')} - {app.get('position')} ({app.get('status')})"):
+            with st.expander(f"{app.get('company')} - {app.get('position')} ({status_label(app.get('status'))})"):
                 col1, col2 = st.columns([3, 1])
-                
+
                 with col1:
-                    st.write(f"**Applied:** {app.get('date_applied')}")
-                    st.write(f"**Status:** {app.get('status')}")
+                    st.write(f"**{t('applied_on')}:** {app.get('date_applied')}")
+                    st.write(f"**{t('status')}:** {status_label(app.get('status'))}")
                     if app.get('job_url'):
-                        st.markdown(f"[Job Posting]({app['job_url']})")
-                    
+                        st.markdown(f"[{t('job_posting_link')}]({app['job_url']})")
+
                     if app.get('keywords'):
-                        with st.expander("AI Analysis"):
+                        with st.expander(t('ai_analysis')):
                             st.markdown(app['keywords'])
-                
+
                 with col2:
                     new_status = st.selectbox(
-                        "Update",
-                        ["Applied", "Interview", "Offer", "Rejected"],
-                        index=["Applied", "Interview", "Offer", "Rejected"].index(app.get('status', 'Applied')),
+                        t('update'),
+                        STATUS_VALUES,
+                        index=STATUS_VALUES.index(app.get('status', 'Applied')),
+                        format_func=status_label,
                         key=f"s_{app['id']}"
                     )
-                    
-                    if st.button("Save", key=f"save_{app['id']}"):
+
+                    if st.button(t('save'), key=f"save_{app['id']}"):
                         db.update_application(user_id, app['id'], {'status': new_status})
-                        st.success("Updated")
+                        st.success(t('updated'))
                         st.rerun()
-                    
-                    if st.button("Delete", key=f"del_{app['id']}"):
+
+                    if st.button(t('delete'), key=f"del_{app['id']}"):
                         db.delete_application(user_id, app['id'])
-                        st.success("Deleted")
+                        st.success(t('deleted'))
                         st.rerun()
 
                 if st.session_state.ai_available:
                     st.markdown("---")
-                    st.markdown("**AI Writing Tools**")
+                    st.markdown(f"**{t('ai_writing_tools')}**")
                     col_a, col_b, col_c = st.columns(3)
 
                     with col_a:
-                        if st.button("Generate Cover Letter", key=f"cover_{app['id']}", use_container_width=True):
+                        if st.button(t('generate_cover_letter'), key=f"cover_{app['id']}", use_container_width=True):
                             if not (profile and profile.get('resume')):
-                                st.warning("Add your resume in Profile Setup first")
+                                st.warning(t('add_resume_warning'))
                             elif not app.get('job_description'):
-                                st.warning("This application has no job description saved")
+                                st.warning(t('no_jd_warning'))
                             else:
                                 loading = show_ai_loading(
-                                    ["Reading the job description…", "Drafting your cover letter…"],
+                                    [t('loading_reading_jd'), t('loading_drafting_letter')],
                                     show_skeleton=False,
                                 )
                                 letter = ai.generate_cover_letter(
                                     app.get('company', ''),
                                     app.get('position', ''),
                                     app.get('job_description', ''),
-                                    profile.get('resume', '')
+                                    profile.get('resume', ''),
+                                    lang=st.session_state.lang,
                                 )
                                 loading.empty()
                                 st.session_state[f'cover_letter_{app["id"]}'] = letter
 
                     with col_b:
-                        if st.button("Improve My Resume", key=f"resumetips_{app['id']}", use_container_width=True):
+                        if st.button(t('improve_resume'), key=f"resumetips_{app['id']}", use_container_width=True):
                             if not (profile and profile.get('resume')):
-                                st.warning("Add your resume in Profile Setup first")
+                                st.warning(t('add_resume_warning'))
                             elif not app.get('job_description'):
-                                st.warning("This application has no job description saved")
+                                st.warning(t('no_jd_warning'))
                             else:
                                 loading = show_ai_loading(
-                                    ["Comparing your resume to this role…"],
+                                    [t('loading_comparing_role')],
                                     show_skeleton=False,
                                 )
-                                tips = ai.customize_resume(profile.get('resume', ''), app.get('job_description', ''))
+                                tips = ai.customize_resume(
+                                    profile.get('resume', ''), app.get('job_description', ''),
+                                    lang=st.session_state.lang,
+                                )
                                 loading.empty()
                                 st.session_state[f'resume_tips_{app["id"]}'] = tips
 
                     with col_c:
-                        if st.button("Check Match Score", key=f"matchscore_{app['id']}", use_container_width=True):
+                        if st.button(t('check_match_score'), key=f"matchscore_{app['id']}", use_container_width=True):
                             if not (profile and profile.get('resume')):
-                                st.warning("Add your resume in Profile Setup first")
+                                st.warning(t('add_resume_warning'))
                             elif not app.get('job_description'):
-                                st.warning("This application has no job description saved")
+                                st.warning(t('no_jd_warning'))
                             else:
                                 loading = show_ai_loading(
-                                    ["Scoring your resume against this posting…"],
+                                    [t('loading_scoring_resume')],
                                     show_skeleton=False,
                                 )
-                                match = ai.analyze_job_match(profile.get('resume', ''), app.get('job_description', ''))
+                                match = ai.analyze_job_match(
+                                    profile.get('resume', ''), app.get('job_description', ''),
+                                    lang=st.session_state.lang,
+                                )
                                 loading.empty()
                                 st.session_state[f'match_score_{app["id"]}'] = match
 
                     if f'cover_letter_{app["id"]}' in st.session_state:
-                        st.markdown("#### Cover Letter")
+                        st.markdown(f"#### {t('cover_letter_heading')}")
                         st.markdown(st.session_state[f'cover_letter_{app["id"]}'])
 
                     if f'resume_tips_{app["id"]}' in st.session_state:
-                        st.markdown("#### Resume Suggestions")
+                        st.markdown(f"#### {t('resume_suggestions_heading')}")
                         st.markdown(st.session_state[f'resume_tips_{app["id"]}'])
 
                     if f'match_score_{app["id"]}' in st.session_state:
-                        st.markdown("#### Match Score")
+                        st.markdown(f"#### {t('match_score_heading')}")
                         st.markdown(st.session_state[f'match_score_{app["id"]}'])
 
 # ===== PORTFOLIO PAGE =====
 elif page == "Portfolio":
-    page_header("Portfolio", "Turn your projects into polished, AI-written portfolio entries")
+    page_header(t('portfolio_page_title'), t('portfolio_page_sub'))
 
     projects = db.get_portfolio_projects(user_id)
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Projects", len(projects))
-    col2.metric("Written", len([p for p in projects if p.get('generated')]))
-    col3.metric("Drafts", len([p for p in projects if not p.get('generated')]))
+    col1.metric(t('portfolio_stat_projects'), len(projects))
+    col2.metric(t('portfolio_stat_written'), len([p for p in projects if p.get('generated')]))
+    col3.metric(t('portfolio_stat_drafts'), len([p for p in projects if not p.get('generated')]))
 
     st.markdown("---")
 
-    with st.expander("Add New Project"):
+    with st.expander(t('add_new_project')):
         with st.form("new_project"):
-            title = st.text_input("Project Title", placeholder="AI Job Search Platform")
+            title = st.text_input(t('project_title'), placeholder="AI Job Search Platform")
             col1, col2 = st.columns(2)
             with col1:
-                role = st.text_input("Your Role", placeholder="Full-stack developer")
+                role = st.text_input(t('your_role'), placeholder="Full-stack developer")
             with col2:
-                tech_stack = st.text_input("Tech Stack", placeholder="Python, Streamlit, Claude API, MongoDB")
+                tech_stack = st.text_input(t('tech_stack'), placeholder="Python, Streamlit, Claude API, MongoDB")
 
             description = st.text_area(
-                "What did you build and why? (raw notes are fine)",
+                t('project_desc_label'),
                 height=150,
                 placeholder="Built a job search platform that uses Claude API to..."
             )
             outcome = st.text_area(
-                "Outcome / Impact (optional)",
+                t('project_outcome_label'),
                 height=80,
                 placeholder="Deployed and used daily; improved Lighthouse accessibility score from 88 to 94"
             )
 
-            submit_project = st.form_submit_button("Add Project", type="primary", use_container_width=True)
+            submit_project = st.form_submit_button(t('add_project'), type="primary", use_container_width=True)
 
             if submit_project:
                 if title and description:
@@ -1354,67 +1639,67 @@ elif page == "Portfolio":
                         'description': description,
                         'outcome': outcome,
                     })
-                    success_check(f"Added {title}")
+                    success_check(t('added_company').format(name=title))
                     st.rerun()
                 else:
-                    st.error("Title and description are required")
+                    st.error(t('title_desc_required'))
 
     st.markdown("---")
 
     if len(projects) == 0:
-        st.info("No projects yet — add one above")
+        st.info(t('no_projects_yet'))
     else:
-        section_heading(f"Projects ({len(projects)})")
+        section_heading(t('projects_count').format(count=len(projects)))
 
         for project in projects:
             with st.expander(project.get('title', 'Untitled Project')):
-                st.write(f"**Role:** {project.get('role') or 'N/A'}")
-                st.write(f"**Tech Stack:** {project.get('tech_stack') or 'N/A'}")
-                st.write(f"**Notes:** {project.get('description', 'N/A')}")
+                st.write(f"**{t('role_label')}:** {project.get('role') or 'N/A'}")
+                st.write(f"**{t('tech_stack')}:** {project.get('tech_stack') or 'N/A'}")
+                st.write(f"**{t('notes_label')}:** {project.get('description', 'N/A')}")
                 if project.get('outcome'):
-                    st.write(f"**Outcome:** {project.get('outcome')}")
+                    st.write(f"**{t('outcome_label')}:** {project.get('outcome')}")
 
                 col_a, col_b = st.columns([1, 1])
 
                 with col_a:
                     if not st.session_state.ai_available:
-                        st.caption("AI features unavailable. Check API configuration.")
+                        st.caption(t('ai_unavailable'))
                     else:
-                        button_label = "Regenerate" if project.get('generated') else "Generate Portfolio Entry"
+                        button_label = t('regenerate') if project.get('generated') else t('generate_portfolio_entry')
                         if st.button(button_label, key=f"genport_{project['id']}", type="primary", use_container_width=True):
-                            loading = show_ai_loading(["Writing your portfolio entry…"], show_skeleton=False)
-                            content = ai.generate_portfolio_content(project)
+                            loading = show_ai_loading([t('loading_writing_portfolio')], show_skeleton=False)
+                            content = ai.generate_portfolio_content(project, lang=st.session_state.lang)
                             loading.empty()
                             db.update_portfolio_project(user_id, project['id'], {'generated': content})
                             st.rerun()
 
                 with col_b:
-                    if st.button("Delete", key=f"delport_{project['id']}", use_container_width=True):
+                    if st.button(t('delete'), key=f"delport_{project['id']}", use_container_width=True):
                         db.delete_portfolio_project(user_id, project['id'])
                         st.rerun()
 
                 if project.get('generated'):
                     st.markdown("---")
-                    st.markdown("#### Portfolio Entry")
+                    st.markdown(f"#### {t('portfolio_entry_heading')}")
                     st.markdown(project['generated'])
 
 # ===== ANALYTICS PAGE =====
 elif page == "Analytics":
-    page_header("Analytics", "Job search insights")
-    
+    page_header(t('analytics_page_title'), t('analytics_page_sub'))
+
     apps = db.get_all_applications(user_id)
     stats = db.get_statistics(user_id)
-    
+
     if len(apps) == 0:
-        st.info("No data yet")
+        st.info(t('no_data_yet'))
     else:
         col1, col2 = st.columns(2)
-        
+
         with col1:
-            section_heading("Status Distribution")
+            section_heading(t('status_distribution'))
 
             status_df = pd.DataFrame({
-                "Status": ["Applied", "Interview", "Offer", "Rejected"],
+                "Status": [status_label(v) for v in STATUS_VALUES],
                 "Count": [stats['applied'], stats['interview'], stats['offer'], stats['rejected']],
             })
             axis = alt.Axis(
@@ -1429,9 +1714,9 @@ elif page == "Analytics":
                 y=alt.Y("Count", title=None, axis=axis),
             ).properties(background=palette["bg"])
             st.altair_chart(chart, use_container_width=True)
-        
+
         with col2:
-            section_heading("Recent Activity")
+            section_heading(t('recent_activity'))
 
             status_color = {
                 "Applied": "var(--accent)",
@@ -1446,7 +1731,7 @@ elif page == "Analytics":
                 f'<div class="timeline-item" style="--dot-color: '
                 f'{status_color.get(app.get("status"), "var(--accent)")}; --i:{i};">'
                 f'<div class="t-title">{app["company"]} &mdash; {app["position"]}</div>'
-                f'<div class="t-meta">{app["status"]} on {app["date_applied"]}</div>'
+                f'<div class="t-meta">{t("timeline_meta").format(status=status_label(app["status"]), date=app["date_applied"])}</div>'
                 f'</div>'
                 for i, app in enumerate(apps[:5])
             )
