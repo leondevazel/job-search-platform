@@ -592,32 +592,15 @@ def success_check(message):
     """, unsafe_allow_html=True)
 
 
-def _b64_image(name):
-    """Read a screenshot from screenshots/ as a data URI, or '' if missing."""
-    import base64
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screenshots", name)
-    try:
-        with open(path, "rb") as f:
-            return "data:image/png;base64," + base64.b64encode(f.read()).decode()
-    except OSError:
-        return ""
-
-
 def render_landing_page():
     """Landing splash shown once before the login screen.
 
-    Follows the Apple product-page pattern: a headline, one line of copy, one
-    action, then the product itself. The imagery is real screenshots of this
-    app rather than stock photography."""
-    hero_shot = _b64_image("discover-jobs.png")
-    shot_apps = _b64_image("my-applications.png")
-    shot_stats = _b64_image("analytics.png")
-
+    A headline, one line of copy, one action — nothing else."""
     st.markdown("""
         <style>
         [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
-            padding-top: 4rem;
-            max-width: 1040px;
+            padding-top: 5rem;
+            max-width: 820px;
         }
         /* Streamlit appends an anchor-link icon to headings; it reads as a
            stray glyph next to the headline here. */
@@ -647,31 +630,13 @@ def render_landing_page():
             opacity: 0;
             animation: fadeInUp 0.6s ease-out 0.1s forwards;
         }
-        .shot {
-            margin: 3.5rem auto 0;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
-            opacity: 0;
-            animation: fadeInUp 0.7s ease-out 0.3s forwards;
-        }
-        .shot img { display: block; width: 100%; }
-        .shot-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-        }
-        @media (max-width: 760px) { .shot-row { grid-template-columns: 1fr; } }
-        .shot-row .shot { margin: 0; animation-delay: 0.42s; }
         .landing-caption {
             text-align: center;
             font-size: 0.9rem;
             color: var(--text-muted);
-            margin: 1.2rem 0 3rem;
+            margin: 2rem 0 4rem;
             opacity: 0;
-            animation: fadeInUp 0.6s ease-out 0.5s forwards;
+            animation: fadeInUp 0.6s ease-out 0.3s forwards;
         }
         /* Monochrome pill CTA — the blue default read as generic. */
         .st-key-landing_cta {
@@ -705,22 +670,6 @@ def render_landing_page():
         if st.button("Get Started", key="landing_cta", type="primary", use_container_width=True):
             st.session_state.show_landing = False
             st.rerun()
-
-    if hero_shot:
-        st.markdown(
-            f'<div class="shot"><img src="{hero_shot}" alt="Job recommendations '
-            f'with match scores and verified postings"/></div>',
-            unsafe_allow_html=True,
-        )
-
-    if shot_apps and shot_stats:
-        st.markdown(
-            '<div class="shot-row">'
-            f'<div class="shot"><img src="{shot_apps}" alt="Application tracker"/></div>'
-            f'<div class="shot"><img src="{shot_stats}" alt="Job search analytics"/></div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
 
     st.markdown(
         '<p class="landing-caption">Matches checked against real postings. '
