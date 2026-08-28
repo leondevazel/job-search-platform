@@ -592,59 +592,111 @@ def success_check(message):
     """, unsafe_allow_html=True)
 
 
+def _b64_image(name):
+    """Read a screenshot from screenshots/ as a data URI, or '' if missing."""
+    import base64
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screenshots", name)
+    try:
+        with open(path, "rb") as f:
+            return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    except OSError:
+        return ""
+
+
 def render_landing_page():
     """Landing splash shown once before the login screen.
 
-    Deliberately plain: a single centered headline, one line of supporting
-    copy, and one action — the Apple product-page pattern. No gradient text,
-    no emoji chips, no badge; the restraint is the design."""
+    Follows the Apple product-page pattern: a headline, one line of copy, one
+    action, then the product itself. The imagery is real screenshots of this
+    app rather than stock photography."""
+    hero_shot = _b64_image("discover-jobs.png")
+    shot_apps = _b64_image("my-applications.png")
+    shot_stats = _b64_image("analytics.png")
+
     st.markdown("""
         <style>
         [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
-            padding-top: 5rem;
-            max-width: 820px;
+            padding-top: 4rem;
+            max-width: 1040px;
         }
-        .landing {
-            text-align: center;
-            padding: 3rem 1rem 0;
-        }
+        /* Streamlit appends an anchor-link icon to headings; it reads as a
+           stray glyph next to the headline here. */
+        .landing h1 a, .landing h1 svg { display: none !important; }
+        .landing { text-align: center; padding: 2rem 1rem 0; }
         .landing h1 {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-            font-size: clamp(2.6rem, 6vw, 4.2rem) !important;
+            font-size: clamp(2.6rem, 6vw, 4rem) !important;
             font-weight: 600 !important;
             letter-spacing: -0.035em;
             line-height: 1.06;
             color: var(--text) !important;
-            margin: 0 0 1.4rem;
+            margin: 0 0 1.3rem;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out forwards;
         }
         .landing .lede {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            font-size: clamp(1.1rem, 2vw, 1.4rem);
+            font-size: clamp(1.1rem, 2vw, 1.35rem);
             font-weight: 400;
             line-height: 1.45;
             color: var(--text-muted);
-            max-width: 34ch;
+            max-width: 36ch;
             margin: 0 auto;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out 0.1s forwards;
         }
+        .shot {
+            margin: 3.5rem auto 0;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+            opacity: 0;
+            animation: fadeInUp 0.7s ease-out 0.3s forwards;
+        }
+        .shot img { display: block; width: 100%; }
+        .shot-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        @media (max-width: 760px) { .shot-row { grid-template-columns: 1fr; } }
+        .shot-row .shot { margin: 0; animation-delay: 0.42s; }
+        .landing-caption {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin: 1.2rem 0 3rem;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out 0.5s forwards;
+        }
+        /* Monochrome pill CTA — the blue default read as generic. */
         .st-key-landing_cta {
-            max-width: 200px;
-            margin: 2.4rem auto 0;
+            max-width: 190px;
+            margin: 2.2rem auto 0;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out 0.2s forwards;
         }
-        .st-key-landing_cta .stButton>button {
-            font-weight: 400;
+        .st-key-landing_cta .stButton>button[kind="primary"] {
+            background: var(--text);
+            border: 1px solid var(--text);
+            color: var(--bg);
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            height: 3em;
+        }
+        .st-key-landing_cta .stButton>button[kind="primary"]:hover {
+            background: var(--text-muted);
+            border-color: var(--text-muted);
+            color: var(--bg);
         }
         </style>
         <div class="landing">
             <h1>Your job search,<br/>finally organized.</h1>
-            <p class="lede">Track every application. Get matched to roles that fit.</p>
+            <p class="lede">Track every application. Get matched to roles that actually fit.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -653,6 +705,28 @@ def render_landing_page():
         if st.button("Get Started", key="landing_cta", type="primary", use_container_width=True):
             st.session_state.show_landing = False
             st.rerun()
+
+    if hero_shot:
+        st.markdown(
+            f'<div class="shot"><img src="{hero_shot}" alt="Job recommendations '
+            f'with match scores and verified postings"/></div>',
+            unsafe_allow_html=True,
+        )
+
+    if shot_apps and shot_stats:
+        st.markdown(
+            '<div class="shot-row">'
+            f'<div class="shot"><img src="{shot_apps}" alt="Application tracker"/></div>'
+            f'<div class="shot"><img src="{shot_stats}" alt="Job search analytics"/></div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        '<p class="landing-caption">Matches checked against real postings. '
+        'Cover letters written from your own resume.</p>',
+        unsafe_allow_html=True,
+    )
 
 
 # ===== AUTH GATE =====
@@ -1390,11 +1464,15 @@ elif page == "Analytics":
                 "Rejected": "var(--danger)",
             }
 
-            items = "".join(f"""
-                <div class="timeline-item" style="--dot-color: {status_color.get(app.get('status'), 'var(--accent)')}; --i:{i};">
-                    <div class="t-title">{app['company']} &mdash; {app['position']}</div>
-                    <div class="t-meta">{app['status']} on {app['date_applied']}</div>
-                </div>
-            """ for i, app in enumerate(apps[:5]))
+            # Keep this markup unindented — Markdown turns 4+ leading spaces
+            # into a code block, which would print the tags instead of rendering.
+            items = "".join(
+                f'<div class="timeline-item" style="--dot-color: '
+                f'{status_color.get(app.get("status"), "var(--accent)")}; --i:{i};">'
+                f'<div class="t-title">{app["company"]} &mdash; {app["position"]}</div>'
+                f'<div class="t-meta">{app["status"]} on {app["date_applied"]}</div>'
+                f'</div>'
+                for i, app in enumerate(apps[:5])
+            )
 
             st.markdown(f'<div class="timeline">{items}</div>', unsafe_allow_html=True)
