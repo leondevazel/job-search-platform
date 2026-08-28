@@ -150,15 +150,15 @@ class AIHelper:
 
             message = self.client.messages.create(
                 model="claude-sonnet-5",
-                max_tokens=12000,
+                max_tokens=7000,
                 tools=[{
                     "type": "web_search_20260209",
                     "name": "web_search",
-                    "max_uses": 15,
+                    "max_uses": 8,
                 }],
                 messages=[{
                     "role": "user",
-                    "content": f"""Based on this profile, recommend 20 companies that would be a good match.
+                    "content": f"""Based on this profile, recommend 12 companies that would be a good match.
 Use web search to check each company's careers page or recent postings for a role
 matching this profile, and to look up what the company says about its culture,
 values, or ideal-candidate profile ("인재상" if Korean).
