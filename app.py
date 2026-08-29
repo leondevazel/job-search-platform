@@ -841,8 +841,13 @@ def render_landing_page():
     st.markdown("""
         <style>
         [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
-            padding-top: 6.5rem;
             max-width: 820px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-top: 0;
+            padding-bottom: 3rem;
         }
         /* Streamlit appends an anchor-link icon to headings; it reads as a
            stray glyph next to the headline here. */
@@ -905,14 +910,18 @@ def render_landing_page():
             text-align: center;
             font-size: 0.9rem;
             color: var(--text-muted);
-            margin: 2.2rem 0 4.5rem;
+            /* padding, not margin — a top margin here collapses into the
+               parent wrapper (this <p> is its only child) and gets
+               silently dropped, throwing off the gap around the button. */
+            margin: 0 0 4.5rem;
+            padding-top: 1.4rem;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out 0.42s forwards;
         }
         /* Monochrome pill CTA — the blue default read as generic. */
         .st-key-landing_cta {
             max-width: 210px;
-            margin: 2.6rem auto 0;
+            margin: 2.4rem auto 0;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out 0.34s forwards;
         }
