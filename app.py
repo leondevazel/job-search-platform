@@ -33,6 +33,7 @@ T = {
     "landing_lede": {"ko": "지원 현황을 한눈에 관리하고, 나에게 맞는 공고를 추천받으세요.",
                       "en": "Track every application. Get matched to roles that actually fit."},
     "landing_cta": {"ko": "시작하기", "en": "Get Started"},
+    "landing_eyebrow": {"ko": "AI 커리어 플랫폼", "en": "AI Career Platform"},
     "landing_caption": {"ko": "실제 채용공고 확인 기반 매칭, 내 이력서로 작성하는 자소서.",
                          "en": "Matches checked against real postings. Cover letters written from your own resume."},
 
@@ -840,24 +841,53 @@ def render_landing_page():
     st.markdown("""
         <style>
         [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
-            padding-top: 5rem;
+            padding-top: 6.5rem;
             max-width: 820px;
         }
         /* Streamlit appends an anchor-link icon to headings; it reads as a
            stray glyph next to the headline here. */
         .landing h1 a, .landing h1 svg { display: none !important; }
         .landing { text-align: center; padding: 2rem 1rem 0; }
+        .landing-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin: 0 0 1.6rem;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        .landing-eyebrow::before {
+            content: "";
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
         .landing h1 {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-            font-size: clamp(2.6rem, 6vw, 4rem) !important;
-            font-weight: 600 !important;
-            letter-spacing: -0.035em;
-            line-height: 1.06;
+            font-size: clamp(3rem, 8vw, 5.4rem) !important;
+            font-weight: 750 !important;
+            letter-spacing: -0.045em;
+            line-height: 1.02;
             color: var(--text) !important;
-            margin: 0 0 1.3rem;
+            margin: 0 0 1.5rem;
             opacity: 0;
-            animation: fadeInUp 0.6s ease-out forwards;
+            animation: fadeInUp 0.65s ease-out 0.08s forwards;
+        }
+        .landing-rule {
+            width: 44px;
+            height: 3px;
+            background: var(--text);
+            margin: 0 auto 1.6rem;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out 0.18s forwards;
         }
         .landing .lede {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
@@ -869,35 +899,37 @@ def render_landing_page():
             max-width: 36ch;
             margin: 0 auto;
             opacity: 0;
-            animation: fadeInUp 0.6s ease-out 0.1s forwards;
+            animation: fadeInUp 0.6s ease-out 0.26s forwards;
         }
         .landing-caption {
             text-align: center;
             font-size: 0.9rem;
             color: var(--text-muted);
-            margin: 2rem 0 4rem;
+            margin: 2.2rem 0 4.5rem;
             opacity: 0;
-            animation: fadeInUp 0.6s ease-out 0.3s forwards;
+            animation: fadeInUp 0.6s ease-out 0.42s forwards;
         }
         /* Monochrome pill CTA — the blue default read as generic. */
         .st-key-landing_cta {
-            max-width: 190px;
-            margin: 2.2rem auto 0;
+            max-width: 210px;
+            margin: 2.6rem auto 0;
             opacity: 0;
-            animation: fadeInUp 0.6s ease-out 0.2s forwards;
+            animation: fadeInUp 0.6s ease-out 0.34s forwards;
         }
         .st-key-landing_cta .stButton>button[kind="primary"] {
             background: var(--text);
             border: 1px solid var(--text);
             color: var(--bg);
-            font-weight: 500;
+            font-weight: 600;
             letter-spacing: -0.01em;
-            height: 3em;
+            height: 3.2em;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
         }
         .st-key-landing_cta .stButton>button[kind="primary"]:hover {
             background: var(--text-muted);
             border-color: var(--text-muted);
             color: var(--bg);
+            transform: translateY(-1px);
         }
         .st-key-landing_lang { max-width: 200px; margin: 0 auto; }
         </style>
@@ -909,7 +941,9 @@ def render_landing_page():
 
     st.markdown(f"""
         <div class="landing">
+            <div class="landing-eyebrow">{t('landing_eyebrow')}</div>
             <h1>{t('landing_title_1')}<br/>{t('landing_title_2')}</h1>
+            <div class="landing-rule"></div>
             <p class="lede">{t('landing_lede')}</p>
         </div>
     """, unsafe_allow_html=True)
