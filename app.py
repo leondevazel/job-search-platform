@@ -67,9 +67,14 @@ T = {
     "profile_section_targets": {"ko": "희망 직무", "en": "Target Positions"},
     "profile_section_resume": {"ko": "이력서", "en": "Resume"},
     "profile_full_name": {"ko": "이름", "en": "Full Name"},
+    "profile_name_placeholder": {"ko": "예: 홍길동", "en": "e.g. Jane Doe"},
     "profile_education": {"ko": "학력", "en": "Education"},
+    "profile_education_placeholder": {"ko": "예: OO대학교 컴퓨터공학과 학사, 2024",
+                                       "en": "e.g. B.S. Computer Science, State University, 2024"},
     "profile_experience": {"ko": "경력", "en": "Experience Level"},
     "profile_location": {"ko": "희망 지역", "en": "Target Location"},
+    "profile_location_placeholder": {"ko": "예: 서울, 대한민국 / 베이 에어리어, 미국",
+                                      "en": "e.g. Seoul, Korea / Bay Area, USA"},
     "profile_skills_hint": {"ko": "보유 기술을 쉼표로 구분해서 입력하세요", "en": "Enter your skills (comma-separated)"},
     "profile_skills": {"ko": "기술 스택", "en": "Skills"},
     "profile_roles": {"ko": "희망 직무", "en": "Roles of Interest"},
@@ -1048,12 +1053,12 @@ if page == "Profile Setup":
             name = st.text_input(
                 t('profile_full_name'),
                 value=current_profile.get('name', ''),
-                placeholder="Sunghoon Lee"
+                placeholder=t('profile_name_placeholder')
             )
             education = st.text_input(
                 t('profile_education'),
                 value=current_profile.get('education', ''),
-                placeholder="B.S. Computer Science, UW-Madison"
+                placeholder=t('profile_education_placeholder')
             )
 
         with col2:
@@ -1066,7 +1071,7 @@ if page == "Profile Setup":
             target_location = st.text_input(
                 t('profile_location'),
                 value=current_profile.get('target_location', ''),
-                placeholder="Seoul, Korea / Bay Area, USA"
+                placeholder=t('profile_location_placeholder')
             )
 
         st.markdown("---")
