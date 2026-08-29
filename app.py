@@ -872,12 +872,12 @@ def render_landing_page():
         .landing h1 {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-            font-size: clamp(3rem, 8vw, 5.4rem) !important;
-            font-weight: 750 !important;
-            letter-spacing: -0.045em;
-            line-height: 1.02;
+            font-size: clamp(2.6rem, 6vw, 4rem) !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.035em;
+            line-height: 1.06;
             color: var(--text) !important;
-            margin: 0 0 1.5rem;
+            margin: 0 0 1.3rem;
             opacity: 0;
             animation: fadeInUp 0.65s ease-out 0.08s forwards;
         }
