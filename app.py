@@ -356,6 +356,14 @@ st.markdown("""
     .stMarkdown p { color: var(--text-muted); }
     .section-heading { font-size: 1.5rem; margin: 0.2rem 0 0.6rem; }
 
+    /* Widget labels (text_input/text_area/selectbox captions) default to a
+       fixed color that isn't aware of the dark-mode palette, making them
+       nearly invisible on a black background. */
+    [data-testid="stWidgetLabel"] p,
+    [data-testid="stWidgetLabel"] label {
+        color: var(--text-muted) !important;
+    }
+
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 
     /* ---- Page header ---- */
