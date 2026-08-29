@@ -841,8 +841,13 @@ def render_landing_page():
     st.markdown("""
         <style>
         [data-testid="stAppViewContainer"] [data-testid="stMain"] .block-container {
-            padding-top: 6.5rem;
             max-width: 820px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-top: 0;
+            padding-bottom: 3rem;
         }
         /* Streamlit appends an anchor-link icon to headings; it reads as a
            stray glyph next to the headline here. */
